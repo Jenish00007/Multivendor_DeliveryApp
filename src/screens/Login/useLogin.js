@@ -11,7 +11,7 @@ import AuthContext from '../../context/Auth'
 import { useNavigation } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-const API_URL = 'https://api.qauds.in/api/v2'
+import { API_URL } from '../../config/api'
 
 export const useLogin = () => {
   const navigation = useNavigation()
@@ -100,6 +100,7 @@ export const useLogin = () => {
         throw new Error('Invalid response from server')
       }
     } catch (error) {
+      console.error('Login error:', error);
       FlashMessage({
         message: error.message || t('errorWhileLogging')
       })

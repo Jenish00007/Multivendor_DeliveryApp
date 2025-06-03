@@ -84,7 +84,7 @@ const Products = ({ item }) => {
             <View style={styles.cardFooterRow}>
               <View style={styles.priceContainer}>
                 <Text style={styles.cardPriceCurrency}>₹</Text>
-                <Text style={styles.cardPrice}>{item?.price || 0}</Text>
+                <Text style={styles.cardPrice}>{item?.discountPrice || item?.price || 0}</Text>
               </View>
               <TouchableOpacity 
                 onPress={handleAddToCart}

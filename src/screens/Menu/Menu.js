@@ -63,6 +63,7 @@ import Products from '../../components/Products/Products'
 import CategoryListView from '../../components/NearByShop/CategoryListView'
 import NewFiggoStore from '../../components/NewFiggoStore/NewFiggoStore'
 import axios from 'axios'
+import { API_URL } from '../../config/api'
 
 
 const RESTAURANTS = gql`
@@ -374,7 +375,7 @@ function Menu() {
     const fetchBanners = async () => {
       setBannersLoading(true);
       try {
-        const response = await fetch('https://api.qauds.in/api/v2/shop-banners/all?shopId=683489288c3e232ac5eef736', {
+        const response = await fetch(`${API_URL}/admin-banner/all`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -400,7 +401,7 @@ function Menu() {
     const fetchCategories = async () => {
       setCategoriesLoading(true);
       try {
-        const response = await fetch('https://api.qauds.in/api/v2/categories', {
+        const response = await fetch(`${API_URL}/categories`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -454,7 +455,7 @@ function Menu() {
     const fetchAllproducts = async () => {
       setNearbyMarketsLoading(true);
       try {
-        const response = await fetch(`https://api.qauds.in/api/v2/product/get-all-products`, {
+        const response = await fetch(`${API_URL}/product/get-all-products`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -480,7 +481,7 @@ function Menu() {
     const fetchAlllatest = async () => {
       setNearbyMarketsLoading(true);
       try {
-        const response = await fetch(`https://api.qauds.in/api/v2/user-products/latest`, {
+        const response = await fetch(`${API_URL}/user-products/latest`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -532,7 +533,7 @@ function Menu() {
     const fetchPopularItem = async () => {
       setPopularItemLoading(true);
       try {
-        const response = await fetch(`https://api.qauds.in/api/v2/user-products/popular`, {
+        const response = await fetch(`${API_URL}/user-products/popular`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -565,7 +566,7 @@ function Menu() {
     const fetchFlashSaleItem = async () => {
       setFlashSaleItemLoading(true);
       try {
-        const response = await fetch(`https://api.qauds.in/api/v2/user-products/flash-sale`, {
+        const response = await fetch(`${API_URL}/user-products/flash-sale`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -598,7 +599,7 @@ function Menu() {
     const fetchRecommendedItem = async () => {
       setRecommendedItemLoading(true);
       try {
-        const response = await fetch(`https://api.qauds.in/api/v2/user-products/recommended`, {
+        const response = await fetch(`${API_URL}/user-products/recommended`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -789,7 +790,7 @@ function Menu() {
       setSearchLoading(true)
       try {
         const response = await fetch(
-          `https://api.qauds.in/api/v2/search/products?keyword=${encodeURIComponent(searchTerm.trim())}&sortBy=name&sortOrder=asc&page=1&limit=10`,
+          `${API_URL}/search/products?keyword=${encodeURIComponent(searchTerm.trim())}&sortBy=name&sortOrder=asc&page=1&limit=10`,
           {
             method: 'GET',
             headers: {

@@ -59,7 +59,7 @@ const OrderConfirmationScreen = ({ navigation }) => {
   }, []);
 
   const handleGoHome = () => {
-    navigation.navigate('Main');
+    navigation.navigate('Menu');
   };
 
   return (

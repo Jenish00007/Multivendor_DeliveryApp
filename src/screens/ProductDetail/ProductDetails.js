@@ -25,7 +25,7 @@ import styles from './ProductDetailsStyles'; // Base styles
 
 const { width } = Dimensions.get('window');
 
-const ProductDetail = (profile) => {
+const ProductDetail = () => {
     const route = useRoute();
     const navigation = useNavigation();
     const { product } = route.params;
@@ -42,8 +42,8 @@ const ProductDetail = (profile) => {
     const colorScheme = useColorScheme();
     
     // Check if the product has multiple images
-    const hasMultipleImages = product?.images_full_url && product.images_full_url.length > 0;
-    const images = hasMultipleImages ? product.images_full_url : [product?.image_full_url];
+    const hasMultipleImages = product?.images && product.images.length > 0;
+    const images = hasMultipleImages ? product.images : [product?.images?.[0]];
 
     // Stock status display
     const stockStatus = product?.stock > 0 ? 'In Stock' : 'Out of Stock';
@@ -156,7 +156,7 @@ const ProductDetail = (profile) => {
                         </>
                     ) : (
                         <Image 
-                            source={{ uri: product?.image_full_url }} 
+                            source={{ uri: images[0] }} 
                             style={styles.productImage} 
                             resizeMode="cover"
                         />
@@ -172,8 +172,22 @@ const ProductDetail = (profile) => {
                         <Text style={[styles.productName, { color: currentTheme.fontMainColor }]}>
                             {product?.name}
                         </Text>
-                        <Text style={[styles.productPrice, { color: currentTheme.primary }]}>
-                            ₹{product?.price}
+                        <View style={styles.priceContainer}>
+                            {product?.originalPrice > product?.discountPrice && (
+                                <Text style={[styles.originalPrice, { color: currentTheme.fontSecondColor }]}>
+                                    ₹{product?.originalPrice}
+                                </Text>
+                            )}
+                            <Text style={[styles.productPrice, { color: currentTheme.primary }]}>
+                                ₹{product?.discountPrice}
+                            </Text>
+                        </View>
+                    </View>
+                    
+                    {/* Category and Subcategory */}
+                    <View style={styles.categoryContainer}>
+                        <Text style={[styles.categoryText, { color: currentTheme.fontSecondColor }]}>
+                            {product?.category?.name} {product?.subcategory?.name ? `> ${product.subcategory.name}` : ''}
                         </Text>
                     </View>
                     
@@ -184,7 +198,7 @@ const ProductDetail = (profile) => {
                                 {renderRatingStars(product?.avg_rating)}
                             </View>
                             <Text style={[styles.ratingText, { color: currentTheme.fontSecondColor }]}>
-                                ({product?.rating_count || 0} reviews)
+                                ({product?.reviews?.length || 0} reviews)
                             </Text>
                         </View>
                         <View style={[styles.stockBadge, {backgroundColor: stockColor + '20'}]}>
@@ -196,6 +210,30 @@ const ProductDetail = (profile) => {
                     
                     <View style={[styles.divider, { backgroundColor: currentTheme.borderBottomColor }]} />
                     
+                    {/* Shop Information */}
+                    <View style={styles.shopContainer}>
+                        <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
+                            Shop Information
+                        </Text>
+                        <View style={styles.shopInfo}>
+                            <Image 
+                                source={{ uri: product?.shop?.avatar }} 
+                                style={styles.shopAvatar}
+                            />
+                            <View style={styles.shopDetails}>
+                                <Text style={[styles.shopName, { color: currentTheme.fontMainColor }]}>
+                                    {product?.shop?.name}
+                                </Text>
+                                <Text style={[styles.shopAddress, { color: currentTheme.fontSecondColor }]}>
+                                    {product?.shop?.address}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                    
+                    <View style={[styles.divider, { backgroundColor: currentTheme.borderBottomColor }]} />
+                    
+                    {/* Product Description */}
                     <View style={styles.descriptionContainer}>
                         <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
                             Description
@@ -205,17 +243,15 @@ const ProductDetail = (profile) => {
                         </Text>
                     </View>
 
-                    {/* Nutrition Information */}
-                    {product?.nutritions_name && product.nutritions_name.length > 0 && (
-                        <View style={styles.nutritionContainer}>
+                    {/* Tags */}
+                    {product?.tags && (
+                        <View style={styles.tagsContainer}>
                             <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
-                                Nutrition Information
+                                Tags
                             </Text>
-                            {product.nutritions_name.map((nutrition, index) => (
-                                <Text key={index} style={[styles.nutritionText, { color: currentTheme.fontSecondColor }]}>
-                                    • {nutrition}
-                                </Text>
-                            ))}
+                            <Text style={[styles.tagsText, { color: currentTheme.fontSecondColor }]}>
+                                {product.tags}
+                            </Text>
                         </View>
                     )}
                 </View>

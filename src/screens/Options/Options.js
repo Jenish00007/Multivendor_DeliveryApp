@@ -52,7 +52,7 @@ export default function SettingsScreen() {
   
 
   const fullName = formetedProfileData ? 
-    `${formetedProfileData.f_name || ''}`.trim() : 
+    `${formetedProfileData.name || ''}`.trim() : 
     'Welcome';
 
   // Language selection state

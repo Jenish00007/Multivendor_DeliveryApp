@@ -4,8 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import AddToFavourites from '../Favourites/AddtoFavourites';
 import UserContext from '../../context/User';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+
 const OfferCard = ({item}) => {
-  
     const navigation = useNavigation();
     const { addToCart, isLoggedIn } = useContext(UserContext);
     const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +57,7 @@ const OfferCard = ({item}) => {
 
     return (
         <View style={supermarketStyles.container}>
-            <TouchableOpacity onPress={() => navigation.navigate('Restaurant', { ...item })}>
+            <TouchableOpacity onPress={() => navigation.navigate('ProductDetail', { product: item })}>
                 <View style={supermarketStyles.header}>
                     <View style={supermarketStyles.headerLeft}>
                         <Image

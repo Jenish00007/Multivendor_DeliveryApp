@@ -24,7 +24,7 @@ function BottomTab({ screen }) {
     <View style={styles.footerContainer}>
       {/* Home Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('MainLanding')}
+        onPress={() => navigation.navigate('Menu')}
         style={styles.footerBtnContainer}
       >
         <MaterialCommunityIcons
@@ -35,50 +35,8 @@ function BottomTab({ screen }) {
         <Text style={getTextStyle('HOME')}>Home</Text>
       </TouchableOpacity>
 
-      {/* Favourite Button */}
-      <TouchableOpacity
-        onPress={() => {
-          if (isLoggedIn) {
-            navigation.navigate('Favourite');
-          } else {
-            navigation.navigate('Login');
-          }
-        }}
-        style={styles.footerBtnContainer}
-      >
-        <View style={styles.imgContainer}>
-          <SimpleLineIcons
-            name="heart"
-            size={scale(20)}
-            color={getIconColor('WhereToGo')}
-          />
-          {cartCount > 0 && (
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>{cartCount}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={getTextStyle('WhereToGo')}>Favourite</Text>
-      </TouchableOpacity>
+      
 
-      {/* Cart Button */}
-      <TouchableOpacity
-        onPress={() => {
-          if (isLoggedIn) {
-            navigation.navigate('Cart');
-          } else {
-            navigation.navigate('Login');
-          }
-        }}
-        style={styles.footerBtnContainer}
-      >
-        <MaterialCommunityIcons
-          name="cart"
-          size={scale(20)}
-          color={getIconColor('FAVOURITES')}
-        />
-        <Text style={getTextStyle('FAVOURITES')}>Cart</Text>
-      </TouchableOpacity>
 
       {/* Orders Button */}
       <TouchableOpacity
@@ -94,9 +52,28 @@ function BottomTab({ screen }) {
         <MaterialCommunityIcons
           name="note"
           size={scale(20)}
-          color={getIconColor('FAVOURITES')}
+          color={getIconColor('ORDERS')}
         />
-        <Text style={getTextStyle('FAVOURITES')}>Orders</Text>
+        <Text style={getTextStyle('ORDERS')}>Orders</Text>
+      </TouchableOpacity>
+      
+      {/* Cart Button */}
+      <TouchableOpacity
+        onPress={() => {
+          if (isLoggedIn) {
+            navigation.navigate('OrderHistoryScreen');
+          } else {
+            navigation.navigate('Login');
+          }
+        }}
+        style={styles.footerBtnContainer}
+      >
+        <MaterialCommunityIcons
+          name="history"
+          size={scale(20)}
+          color={getIconColor('HISTORY')}
+        />
+        <Text style={getTextStyle('HISTORY')}>History</Text>
       </TouchableOpacity>
 
       {/* Profile Icon */}

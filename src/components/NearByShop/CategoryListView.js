@@ -76,7 +76,7 @@ const CategoryListView = ({ data }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.navigate('Restaurant', { ...item })} style={{ height: 134, width: 280 }} touchOpacity={0.6} >
+      <TouchableOpacity onPress={() => navigation.navigate('ProductDetail', { product: item })} style={{ height: 134, width: 280 }} touchOpacity={0.6} >
         <View style={styles.bgColorView} />
         <View style={{ ...StyleSheet.absoluteFillObject, flexDirection: 'row' }}>
           <View style={{ paddingVertical: 24, paddingLeft: 16, }}>

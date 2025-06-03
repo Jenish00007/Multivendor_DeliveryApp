@@ -11,7 +11,6 @@ import {
   StatusBar
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import * as ImagePicker from 'expo-image-picker'
 import styles from './styles'
 import TextDefault from '../../components/Text/TextDefault/TextDefault'
 import { alignment } from '../../utils/alignment'
@@ -19,6 +18,8 @@ import screenOptions from './screenOptions'
 import { FontAwesome } from '@expo/vector-icons'
 import useRegister from './useRegister'
 import { useTranslation } from 'react-i18next'
+
+const DEFAULT_AVATAR = 'https://static.vecteezy.com/system/resources/previews/024/183/535/original/male-avatar-portrait-of-a-young-man-with-glasses-illustration-of-male-character-in-modern-color-style-vector.jpg'
 
 function Register(props) {
   const {
@@ -33,37 +34,12 @@ function Register(props) {
     passwordError,
     visible,
     setVisible,
-    avatar,
-    setAvatar,
-    handleFileInputChange,
     registerAction,
     currentTheme,
     themeContext
   } = useRegister()
 
   const { t } = useTranslation()
-
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    
-    if (status !== 'granted') {
-      FlashMessage({
-        message: t('permissionDenied'),
-      })
-      return
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    })
-
-    if (!result.canceled) {
-      handleFileInputChange(result.assets[0])
-    }
-  }
 
   useLayoutEffect(() => {
     props.navigation.setOptions(
@@ -125,23 +101,20 @@ function Register(props) {
                 </TextDefault>
               </View>
 
-              {/* Avatar Upload Section */}
+              {/* Avatar Section */}
               <View style={styles().avatarContainer}>
-                <TouchableOpacity onPress={pickImage} style={styles().avatarButton}>
-                  {avatar ? (
-                    <Image source={{ uri: avatar.uri }} style={styles().avatar} />
-                  ) : (
-                    <View style={styles().avatarPlaceholder}>
-                      <FontAwesome name="user" size={40} color={currentTheme.fontSecondColor} />
-                    </View>
-                  )}
-                </TouchableOpacity>
+                <View style={styles().avatarButton}>
+                  <Image 
+                    source={{ uri: DEFAULT_AVATAR }} 
+                    style={styles().avatar} 
+                  />
+                </View>
                 <TextDefault
                   H5
                   textColor={currentTheme.fontSecondColor}
                   style={{ ...alignment.MTsmall }}
                 >
-                  {t('uploadPhoto')}
+                  {t('defaultAvatar')}
                 </TextDefault>
               </View>
 

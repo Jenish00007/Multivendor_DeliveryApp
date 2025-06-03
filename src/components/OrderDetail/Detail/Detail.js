@@ -54,7 +54,7 @@ export default function Detail({
           H4
           style={{ ...alignment.MBsmall }}
         >
-          {from}
+          {from || t('storeNotAvailable')}
         </TextDefault>
         <View style={styles.orderNumberContainer}>
           <TextDefault
@@ -91,7 +91,7 @@ export default function Detail({
           Regular
           style={{ ...alignment.MBmedium }}
         >
-          {deliveryAddress}
+          {deliveryAddress || t('addressNotAvailable')}
         </TextDefault>
       </View>
 
@@ -104,7 +104,7 @@ export default function Detail({
             H5
             bold
           >
-            {t('itemsAndQuantity')} ({items.length})
+            {t('itemsAndQuantity')} ({items?.length || 0})
           </TextDefault>
           <TextDefault
             textColor={theme.gray500}
@@ -116,18 +116,18 @@ export default function Detail({
           </TextDefault>
         </View>
         <View style={styles.itemsContainer}>
-          {items.map((item) => (
+          {items?.map((item) => (
             <ItemRow
-              key={item._id}
+              key={item._id || Math.random()}
               theme={theme}
-              quantity={item.quantity}
-              title={`${item.title} ${item.variation.title}`}
+              quantity={item?.quantity || 1}
+              title={item?.name || t('productNotAvailable')}
               currency={currencySymbol}
-              price={item.variation.price}
-              options={item.addons.map((addon) =>
-                addon.options.map(({ title }) => title)
-              )}
-              image={item.image}
+              price={item?.price || 0}
+              options={item.addons?.map((addon) =>
+                addon.options?.map(({ title }) => title)
+              ) || []}
+              image={item?.image}
             />
           ))}
         </View>
@@ -146,19 +146,19 @@ export default function Detail({
         <View style={styles.priceRow}>
           <TextDefault textColor={theme.gray600}>{t('subtotal')}</TextDefault>
           <TextDefault textColor={theme.gray900}>
-            {currencySymbol}{formatIndianCurrency(subTotal)}
+            {currencySymbol}{formatIndianCurrency(subTotal || 0)}
           </TextDefault>
         </View>
         <View style={styles.priceRow}>
           <TextDefault textColor={theme.gray600}>{t('deliveryFee')}</TextDefault>
           <TextDefault textColor={theme.gray900}>
-            {currencySymbol}{formatIndianCurrency(deliveryCharges)}
+            {currencySymbol}{formatIndianCurrency(deliveryCharges || 0)}
           </TextDefault>
         </View>
         <View style={styles.priceRow}>
           <TextDefault textColor={theme.gray600}>{t('tax')}</TextDefault>
           <TextDefault textColor={theme.gray900}>
-            {currencySymbol}{formatIndianCurrency(tax)}
+            {currencySymbol}{formatIndianCurrency(tax || 0)}
           </TextDefault>
         </View>
         {tip > 0 && (
@@ -174,7 +174,7 @@ export default function Detail({
             {t('total')}
           </TextDefault>
           <TextDefault textColor={theme.gray900} bold>
-            {currencySymbol}{formatIndianCurrency(total)}
+            {currencySymbol}{formatIndianCurrency(total || 0)}
           </TextDefault>
         </View>
       </View>
@@ -221,10 +221,10 @@ const ItemRow = ({
           bolder
           style={{ ...alignment.MBxSmall }}
         >
-          {title}
+          {title || t('productNotAvailable')}
         </TextDefault>
 
-        {options.length > 0 && (
+        {options && options.length > 0 && (
           <TextDefault
             bold
             textColor={theme.gray600}
@@ -237,7 +237,7 @@ const ItemRow = ({
         )}
 
         <TextDefault Regular left bolder textColor={theme.gray900}>
-          x{quantity}
+          x{quantity || 1}
         </TextDefault>
       </View>
       <TextDefault
@@ -248,7 +248,7 @@ const ItemRow = ({
         H5
       >
         {currency}
-        {formatIndianCurrency(price)}
+        {formatIndianCurrency(price || 0)}
       </TextDefault>
     </View>
   )

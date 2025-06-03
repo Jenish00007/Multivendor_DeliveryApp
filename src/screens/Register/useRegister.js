@@ -6,8 +6,33 @@ import { emailRegex, passRegex, nameRegex } from '../../utils/regex'
 import ThemeContext from '../../ui/ThemeContext/ThemeContext'
 import { theme } from '../../utils/themeColors'
 import axios from 'axios'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { API_URL } from '../../config/api'
 
-const API_URL = 'https://api.qauds.in/api/v2'
+const DEFAULT_AVATAR = 'https://static.vecteezy.com/system/resources/previews/024/183/535/original/male-avatar-portrait-of-a-young-man-with-glasses-illustration-of-male-character-in-modern-color-style-vector.jpg'
+
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+  }
+})
+
+// Add request interceptor to add auth token
+api.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
 
 const useRegister = () => {
   const navigation = useNavigation()
@@ -18,7 +43,6 @@ const useRegister = () => {
   const [email, setEmail] = useState(route.params?.email || '')
   const [password, setPassword] = useState('')
   const [visible, setVisible] = useState(false)
-  const [avatar, setAvatar] = useState(null)
 
   const [nameError, setNameError] = useState(null)
   const [emailError, setEmailError] = useState(null)
@@ -60,38 +84,38 @@ const useRegister = () => {
     return result
   }
 
-  const handleFileInputChange = (file) => {
-    setAvatar(file)
-  }
-
   const registerAction = async () => {
     if (validateCredentials()) {
       try {
         const config = { 
           headers: { 
-            "Content-Type": "multipart/form-data"
+            "Content-Type": "multipart/form-data",
+            "Accept": "application/json"
           } 
         }
 
         const newForm = new FormData()
-        if (avatar) {
-          newForm.append("file", {
-            uri: avatar.uri,
-            type: 'image/jpeg',
-            name: 'profile.jpg'
-          })
-        }
+        newForm.append("file", {
+          uri: DEFAULT_AVATAR,
+          type: 'image/jpeg',
+          name: 'profile.jpg'
+        })
         newForm.append("name", name)
         newForm.append("email", email.toLowerCase().trim())
         newForm.append("password", password)
 
-        const response = await axios.post(
-          `${API_URL}/user/create-user`,
+        const response = await api.post(
+          '/user/create-user',
           newForm,
           config
         )
 
         if (response.data) {
+          // Store the token if it's in the response
+          if (response.data.token) {
+            await AsyncStorage.setItem('token', response.data.token)
+          }
+
           FlashMessage({
             message: response.data.message || t('registrationSuccess'),
           })
@@ -99,15 +123,17 @@ const useRegister = () => {
           setName('')
           setEmail('')
           setPassword('')
-          setAvatar(null)
           
           navigation.replace('Login', {
             email: email.toLowerCase().trim()
           })
         }
       } catch (error) {
+        console.log('Registration error:', error.response?.data || error.message)
         FlashMessage({
-          message: error.response?.data?.message || t('registrationFailed'),
+          message: error.response?.data?.message || 
+                 error.response?.data?.error || 
+                 t('registrationFailed'),
         })
       }
     }
@@ -125,9 +151,6 @@ const useRegister = () => {
     passwordError,
     visible,
     setVisible,
-    avatar,
-    setAvatar,
-    handleFileInputChange,
     registerAction,
     themeContext,
     currentTheme

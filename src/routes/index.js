@@ -6,6 +6,9 @@ import { createDrawerNavigator } from '@react-navigation/drawer'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import navigationService from './navigationService'
 import * as Notifications from 'expo-notifications'
+import OrderRequestScreen from '../screens/Delivery_Man/Order'
+import OrderDetailsScreen from '../screens/Delivery_Man/OrderDetailsScreen'
+import DeliveryTrackingScreen from '../screens/Delivery_Man/DeliveryTrackingScreen'
 // import Login from '../screens/Login/Login'
 import Login from '../screens/Login/Login'
 import Register from '../screens/Register/Register'
@@ -69,6 +72,8 @@ import PrivacyPolicy from '../screens/Policies/PrivacyPolicy'
 import RefundPolicy from '../screens/Policies/RefundPolicy'
 import CancellationPolicy from '../screens/Policies/CancellationPolicy'
 import ShippingPolicy from '../screens/Policies/ShippingPolicy'
+import Home from '../screens/Delivery_Man/Home'
+import OrderHistoryScreen from '../screens/Delivery_Man/Order_history'
 
 
 const NavigationStack = createStackNavigator()
@@ -104,7 +109,7 @@ function NoDrawer() {
       })}
     >
    
-      <NavigationStack.Screen name='Menu' component={Menu} />
+      <NavigationStack.Screen  options={{ headerShown: true, headerTitle: 'Delivery Man App' }} name='Menu' component={Home} />
       <NavigationStack.Screen
         name='Restaurant'
         component={Restaurant}
@@ -137,7 +142,7 @@ function NoDrawer() {
         }}
       />
       <NavigationStack.Screen name='Settings' component={Settings} />
-      <NavigationStack.Screen name='MyOrders' component={MyOrders} />
+      <NavigationStack.Screen options={{ headerShown: false }} name='MyOrders' component={OrderRequestScreen} />
    
       <NavigationStack.Screen name='Help' component={Help} />
       <NavigationStack.Screen name='HelpBrowser' component={HelpBrowser} />
@@ -180,12 +185,15 @@ function NoDrawer() {
       <NavigationStack.Screen name='AddNewAddress' component={AddNewAddress} />
       <NavigationStack.Screen name='SaveAddress' component={SaveAddress} />
       <NavigationStack.Screen name='Favourite' component={Favourite} />
+      <NavigationStack.Screen options={{ headerShown: false }} name='OrderHistoryScreen' component={OrderHistoryScreen}/>
+      
+      <NavigationStack.Screen name='DeliveryTrackingScreen' component={DeliveryTrackingScreen}/>
     
       <NavigationStack.Screen name='Notification' component={Notification}/>
       <NavigationStack.Screen name='ProductDetail' component={ProductDetails}/>
       <NavigationStack.Screen name='Profile' component={Options}/>
       <NavigationStack.Screen name='OrderSummary' component={OrderSummary}/>
-      <NavigationStack.Screen name='OrderDetails' component={OrderDetail}/>
+      <NavigationStack.Screen options={{ headerShown: false }} name='OrderDetailsScreen' component={OrderDetailsScreen}/>
       <NavigationStack.Screen name='OrderConfirmation' component={OrderConfirmation}/>
 
       {/* Policy Screens */}
@@ -209,7 +217,7 @@ function LocationStack() {
       />
       <Location.Screen name='SelectLocation' component={SelectLocation} />
       <Location.Screen name='AddNewAddress' component={AddNewAddress} />
-      <Location.Screen name='Menu' component={Menu} />
+      <Location.Screen name='Menu' options={{ headerShown: true, headerTitle: 'Delivery App' }} component={Menu} />
     </Location.Navigator>
   )
 }

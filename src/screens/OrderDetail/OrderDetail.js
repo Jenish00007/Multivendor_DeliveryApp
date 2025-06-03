@@ -33,13 +33,16 @@ import useEnvVars from '../../../environment'
 import LottieView from 'lottie-react-native'
 import AuthContext from '../../context/Auth'
 import { StatusBar } from 'react-native'
+import { HeaderBackButton } from '@react-navigation/elements'
+import navigationService from '../../routes/navigationService'
+import { API_URL } from '../../config/api'
 
 const { height: HEIGHT, width: WIDTH } = Dimensions.get('screen')
 
 function OrderDetail(props) {
   const [cancelModalVisible, setCancelModalVisible] = useState(false)
   const [order, setOrder] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState(null)
   
@@ -54,7 +57,6 @@ function OrderDetail(props) {
   const mapView = useRef(null)
   const { token } = useContext(AuthContext)
 
-  console.log('response', props)
   useEffect(() => {
     if (id) {
       fetchOrderDetails()
@@ -68,47 +70,88 @@ function OrderDetail(props) {
     try {
       setLoading(true)
       setError(null)
+      setOrder(null) // Reset order state before fetching
       
+      if (!id) {
+        throw new Error('No order ID provided')
+      }
+
       const headers = {
-        'moduleId': '1',
-        'zoneId': '[1]',
-        'latitude': '23.79354466376145',
-        'longitude': '90.41166342794895',
+        'Content-Type': 'application/json',
         'Authorization': token ? `Bearer ${token}` : ''
       }
 
-      const response = await fetch(`https://6ammart-admin.6amtech.com/api/v1/customer/order/track?order_id=${id}`, {
-        method: 'GET',
-        headers: headers,
-      })
-      
-      const data = await response.json()
+      const response = await fetch(
+        `${API_URL}/order/get-order/${id}`,
+        {
+          method: 'GET',
+          headers: headers,
+        }
+      )
 
       if (!response.ok) {
-        throw new Error(data.message || `API returned status ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      if (!data) {
-        throw new Error('No data received from API')
+      const data = await response.json()
+
+      if (!data || !data.success || !data.order) {
+        throw new Error('No order data received')
       }
 
-      // Handle both single order and orders array responses
-      const orderData = data.id ? data : (data.orders && data.orders[0])
-      
-      if (!orderData) {
-        throw new Error('Order not found or invalid response format')
+      // Format the order data to match our frontend structure
+      const formattedOrder = {
+        _id: data.order._id || '',
+        status: (data.order.status || 'pending').toLowerCase(), // Convert status to lowercase
+        totalPrice: data.order.totalPrice || 0,
+        createdAt: data.order.createdAt || new Date().toISOString(),
+        itemsQty: data.order.itemsQty || 0,
+        items: (data.order.items || []).map(item => ({
+          _id: item._id || '',
+          name: item.name || "Product not found",
+          image: item.image || "",
+          shopName: item.shopName || "Shop not found"
+        })),
+        shippingAddress: {
+          ...data.order.shippingAddress,
+          address: data.order.shippingAddress?.address || '',
+          latitude: data.order.shippingAddress?.latitude || 0,
+          longitude: data.order.shippingAddress?.longitude || 0
+        },
+        paymentInfo: {
+          status: data.order.paymentInfo?.status || 'pending',
+          type: data.order.paymentInfo?.type || 'cash_on_delivery'
+        },
+        paidAt: data.order.paidAt || null,
+        delivery_instruction: data.order.delivery_instruction || '',
+        delivery_man: data.order.delivery_man || null,
+        store: data.order.store || null
       }
 
-      setOrder(orderData)
+      // Validate the formatted order before setting it
+      if (!formattedOrder._id || !formattedOrder.status) {
+        throw new Error('Invalid order data received')
+      }
+
+      console.log('Formatted Order:', formattedOrder) // Debug log
+      setOrder(formattedOrder)
 
     } catch (err) {
       console.error('Error fetching order:', err)
-      setError(err.message || 'Failed to fetch order details')
-      Alert.alert(
-        'Error',
-        `Failed to load order details: ${err.message}`,
-        [{ text: 'OK' }]
-      )
+      let errorMessage = 'Failed to load order details'
+      
+      if (err.message.includes('Network request failed')) {
+        errorMessage = 'Network error: Please check your internet connection'
+      } else if (err.message.includes('not authorized')) {
+        errorMessage = 'You are not authorized to view this order'
+      } else if (err.message.includes('not found')) {
+        errorMessage = 'Order not found'
+      } else {
+        errorMessage = err.message
+      }
+      
+      setError(errorMessage)
+      setOrder(null)
     } finally {
       setLoading(false)
     }
@@ -127,38 +170,27 @@ function OrderDetail(props) {
     try {
       setCancelling(true)
       const headers = {
-        'moduleId': '1',
-        'zoneId': '[1]',
-        'latitude': '23.79354466376145',
-        'longitude': '90.41166342794895',
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
       }
 
-      // Create form data
-      const formBody = []
-      formBody.push(`_method=put`)
-      formBody.push(`order_id=${id}`)
-      formBody.push(`reason=${encodeURIComponent(reason)}`)
-
-      const response = await fetch('https://6ammart-admin.6amtech.com/api/v1/customer/order/cancel', {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/orders/order-refund/${id}`, {
+        method: 'PUT',
         headers: headers,
-        body: formBody.join('&')
+        body: JSON.stringify({ status: 'Cancelled', reason })
       })
 
-      if (!response || !response.ok) {
-        const errorData = await response?.json().catch(() => ({}))
-        throw new Error(errorData?.message || 'Failed to cancel order')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to cancel order')
       }
 
       const data = await response.json()
       
-      if (data.errors) {
-        throw new Error(data.errors[0]?.message || 'Failed to cancel order')
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to cancel order')
       }
-      
+
       FlashMessage({
         message: 'Order cancelled successfully'
       })
@@ -179,240 +211,275 @@ function OrderDetail(props) {
   }
 
   useEffect(() => {
-    if (order) {
-      props.navigation.setOptions({
-        headerRight: () => HelpButton({ iconBackground: currentTheme.buttonBackground, navigation, t }),
-        headerTitle: t('orderDetails'),
-        headerTitleStyle: { 
-          color: currentTheme.buttonTextPink,
-          fontSize: scale(18),
-          fontWeight: '600'
-        },
-        headerStyle: { 
-          backgroundColor: currentTheme.buttonBackground,
-          elevation: 0,
-          shadowOpacity: 0
-        },
-        headerTintColor: currentTheme.buttonTextPink,
-        headerTitleAlign: 'center'
-      })
-    }
-  }, [order])
+    navigation.setOptions({
+      headerRight: null,
+      headerLeft: () => (
+        <HeaderBackButton
+          truncatedLabel=""
+          backImage={() => (
+            <View style={styles().backButton}>
+              <MaterialIcons name="arrow-back" size={25} color="#000000" />
+            </View>
+          )}
+          onPress={() => {
+            navigationService.goBack()
+          }}
+        />
+      ),
+      headerTitle: t('orderDetails'),
+      headerTitleAlign: 'center',
+      headerTitleStyle: {
+        color: '#000000',
+        fontWeight: 'bold'
+      },
+      headerTitleContainerStyle: {
+        marginTop: '2%',
+        paddingLeft: scale(25),
+        paddingRight: scale(25),
+        height: '75%',
+        marginLeft: 0
+      },
+      headerStyle: {
+        backgroundColor: '#F16122',
+        elevation: 0,
+        shadowOpacity: 0
+      },
+      headerTintColor: '#000000'
+    })
+  }, [navigation, t])
 
-  if (loading || !order) {
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View style={[styles().container, { backgroundColor: currentTheme.themeBackground }]}>
+          <Spinner
+            backColor={currentTheme.themeBackground}
+            spinnerColor={currentTheme.main}
+          />
+        </View>
+      )
+    }
+
+    if (error) {
+      return (
+        <View style={[styles().container, { backgroundColor: currentTheme.themeBackground }]}>
+          <TextError text={error} />
+        </View>
+      )
+    }
+
+    if (!order) {
+      return (
+        <View style={[styles().container, { backgroundColor: currentTheme.themeBackground }]}>
+          <TextDefault>Order not found</TextDefault>
+        </View>
+      )
+    }
+
+    const remainingTime = calulateRemainingTime(order) || 0
+
     return (
-      <Spinner
-        backColor={currentTheme.themeBackground}
-        spinnerColor={currentTheme.main}
-      />
+      <>
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            backgroundColor: currentTheme.themeBackground,
+            paddingBottom: scale(150)
+          }}
+          showsVerticalScrollIndicator={false}
+          overScrollMode='never'
+        >
+          {order?.delivery_man && order?.status === 'picked_up' && order?.shippingAddress && (
+            <MapView
+              ref={(c) => (mapView.current = c)}
+              style={{ flex: 1, height: HEIGHT * 0.4 }}
+              showsUserLocation={false}
+              initialRegion={{
+                latitude: +order?.shippingAddress?.latitude,
+                longitude: +order?.shippingAddress?.longitude,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421
+              }}
+              zoomEnabled={true}
+              zoomControlEnabled={true}
+              rotateEnabled={false}
+              customMapStyle={mapStyle}
+              provider={PROVIDER_GOOGLE}
+            >
+              {order.store && (
+                <Marker
+                  coordinate={{
+                    longitude: +order?.store?.longitude,
+                    latitude: +order?.store?.latitude
+                  }}
+                >
+                  <RestaurantMarker />
+                </Marker>
+              )}
+              {order?.shippingAddress && (
+                <Marker
+                  coordinate={{
+                    latitude: +order?.shippingAddress?.latitude,
+                    longitude: +order?.shippingAddress?.longitude
+                  }}
+                >
+                  <CustomerMarker />
+                </Marker>
+              )}
+              {order?.store && order?.shippingAddress && (
+                <MapViewDirections
+                  origin={{
+                    longitude: +order?.store?.longitude,
+                    latitude: +order.store.latitude
+                  }}
+                  destination={{
+                    latitude: +order?.shippingAddress?.latitude,
+                    longitude: +order?.shippingAddress?.longitude
+                  }}
+                  apikey={GOOGLE_MAPS_KEY}
+                  strokeWidth={6}
+                  strokeColor={currentTheme.main}
+                  optimizeWaypoints={true}
+                  onReady={(result) => {
+                    mapView?.current?.fitToCoordinates(result.coordinates, {
+                      edgePadding: {
+                        right: WIDTH / 20,
+                        bottom: HEIGHT / 20,
+                        left: WIDTH / 20,
+                        top: HEIGHT / 20
+                      }
+                    })
+                  }}
+                />
+              )}
+              {order.delivery_man && <TrackingRider id={order.delivery_man.id} />}
+            </MapView>
+          )}
+          <View
+            style={{
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingTop: scale(10),
+              paddingBottom: scale(10)
+            }}
+          >
+            <OrderStatusImage status={order?.status} />
+            {order?.status !== 'delivered' && (
+              <View
+                style={{
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginTop: scale(10)
+                }}
+              >
+                {!['pending', 'cancelled'].includes(order?.status) && (
+                  <>
+                    <TextDefault
+                      style={{ marginBottom: scale(5) }}
+                      textColor={currentTheme.gray500}
+                      H5
+                    >
+                      {t('estimatedDeliveryTime')}
+                    </TextDefault>
+                    <TextDefault
+                      style={{ marginBottom: scale(5) }}
+                      Regular
+                      textColor={currentTheme.gray900}
+                      H1
+                      bolder
+                    >
+                      {remainingTime}-{remainingTime + 5} {t('mins')}
+                    </TextDefault>
+                    <ProgressBar
+                      configuration={configuration}
+                      currentTheme={currentTheme}
+                      orderStatus={order?.status}
+                    />
+                  </>
+                )}
+                <TextDefault
+                  H5
+                  style={{ marginTop: scale(10), textAlign: 'center' }}
+                  textColor={currentTheme.gray600}
+                  bold
+                >
+                  {t(order?.status?.toUpperCase() || 'PENDING')}
+                </TextDefault>
+              </View>
+            )}
+          </View>
+          <Instructions title={'Instructions'} theme={currentTheme} message={order.delivery_instruction} />
+          <Detail
+            navigation={props.navigation}
+            currencySymbol="₹"
+            items={order?.items || []}
+            from={order?.items?.[0]?.shopName || ''}
+            orderNo={order?._id?.toString() || ''}
+            deliveryAddress={order?.shippingAddress?.address || ''}
+            subTotal={order?.totalPrice || 0}
+            tip={0}
+            tax={0}
+            deliveryCharges={0}
+            total={order?.totalPrice || 0}
+            theme={currentTheme}
+            id={order?._id}
+            orderStatus={order?.status}
+          />
+        </ScrollView>
+        <View style={styles().bottomContainer(currentTheme)}>
+          <PriceRow
+            theme={currentTheme}
+            title={t('total')}
+            currency="₹"
+            price={order.totalPrice?.toFixed(2) || '0.00'}
+          />
+          {order?.status === 'pending' && (
+            <View style={{ margin: scale(20) }}>
+              <TouchableOpacity 
+                style={[styles().cancelButtonContainer(currentTheme), {
+                  backgroundColor: currentTheme.buttonBackground,
+                  shadowColor: currentTheme.shadowColor,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: 5,
+                  padding: scale(15),
+                  borderRadius: scale(8),
+                  alignItems: 'center'
+                }]}
+                onPress={() => setCancelModalVisible(true)}
+              >
+                <TextDefault
+                  textColor={currentTheme.buttonTextPink}
+                  bold
+                  style={{ fontSize: scale(16) }}
+                >
+                  {t('cancelOrder')}
+                </TextDefault>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </>
     )
   }
-  if (error) return <TextError text={error} />
-
-  const remainingTime = calulateRemainingTime(order)
-  const {
-    id: orderId,
-    store,
-    delivery_address,
-    order_amount,
-    delivery_charge,
-    total_tax_amount,
-    dm_tips,
-    store_discount_amount,
-    order_status
-  } = order
 
   return (
     <View style={{ flex: 1 }}>
       <StatusBar
-        backgroundColor={currentTheme.buttonBackground}
+        backgroundColor="#F16122"
         barStyle="dark-content"
         translucent={false}
         animated={true}
       />
-      <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
-          backgroundColor: currentTheme.themeBackground,
-          paddingBottom: scale(150)
-        }}
-        showsVerticalScrollIndicator={false}
-        overScrollMode='never'
-      >
-        {order.delivery_man && order_status === 'picked_up' && (
-          <MapView
-            ref={(c) => (mapView.current = c)}
-            style={{ flex: 1, height: HEIGHT * 0.4 }}
-            showsUserLocation={false}
-            initialRegion={{
-              latitude: +delivery_address.latitude,
-              longitude: +delivery_address.longitude,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421
-            }}
-            zoomEnabled={true}
-            zoomControlEnabled={true}
-            rotateEnabled={false}
-            customMapStyle={mapStyle}
-            provider={PROVIDER_GOOGLE}
-          >
-            <Marker
-              coordinate={{
-                longitude: +store.longitude,
-                latitude: +store.latitude
-              }}
-            >
-              <RestaurantMarker />
-            </Marker>
-            <Marker
-              coordinate={{
-                latitude: +delivery_address.latitude,
-                longitude: +delivery_address.longitude
-              }}
-            >
-              <CustomerMarker />
-            </Marker>
-            <MapViewDirections
-              origin={{
-                longitude: +store.longitude,
-                latitude: +store.latitude
-              }}
-              destination={{
-                latitude: +delivery_address.latitude,
-                longitude: +delivery_address.longitude
-              }}
-              apikey={GOOGLE_MAPS_KEY}
-              strokeWidth={6}
-              strokeColor={currentTheme.main}
-              optimizeWaypoints={true}
-              onReady={(result) => {
-                mapView?.current?.fitToCoordinates(result.coordinates, {
-                  edgePadding: {
-                    right: WIDTH / 20,
-                    bottom: HEIGHT / 20,
-                    left: WIDTH / 20,
-                    top: HEIGHT / 20
-                  }
-                })
-              }}
-            />
-            {order.delivery_man && <TrackingRider id={order.delivery_man.id} />}
-          </MapView>
-        )}
-        <View
-          style={{
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingTop: scale(10),
-            paddingBottom: scale(10)
-          }}
-        >
-          <OrderStatusImage status={order_status} />
-          {order_status !== 'delivered' && (
-            <View
-              style={{
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: scale(10)
-              }}
-            >
-              {!['pending', 'cancelled'].includes(order_status) && (
-                <>
-                  <TextDefault
-                    style={{ marginBottom: scale(5) }}
-                    textColor={currentTheme.gray500}
-                    H5
-                  >
-                    {t('estimatedDeliveryTime')}
-                  </TextDefault>
-                  <TextDefault
-                    style={{ marginBottom: scale(5) }}
-                    Regular
-                    textColor={currentTheme.gray900}
-                    H1
-                    bolder
-                  >
-                    {remainingTime}-{remainingTime + 5} {t('mins')}
-                  </TextDefault>
-                  <ProgressBar
-                    configuration={configuration}
-                    currentTheme={currentTheme}
-                    item={order}
-                    navigation={navigation}
-                  />
-                </>
-              )}
-              <TextDefault
-                H5
-                style={{ marginTop: scale(10), textAlign: 'center' }}
-                textColor={currentTheme.gray600}
-                bold
-              >
-                {t(order_status?.toUpperCase() || 'PENDING')}
-              </TextDefault>
-            </View>
-          )}
-        </View>
-        <Instructions title={'Instructions'} theme={currentTheme} message={order.delivery_instruction} />
-        <Detail
-          navigation={props.navigation}
-          currencySymbol="₹"
-          items={[]} // You'll need to add items data from your API
-          from={store?.name || ''}
-          orderNo={orderId?.toString() || ''}
-          deliveryAddress={delivery_address?.address || ''}
-          subTotal={order_amount - total_tax_amount - delivery_charge - dm_tips + store_discount_amount}
-          tip={dm_tips}
-          tax={total_tax_amount}
-          deliveryCharges={delivery_charge}
-          total={order_amount}
-          theme={currentTheme}
-          id={orderId}
-          rider={order.delivery_man}
-          orderStatus={order_status}
-        />
-      </ScrollView>
-      <View style={styles().bottomContainer(currentTheme)}>
-        <PriceRow
-          theme={currentTheme}
-          title={t('total')}
-          currency="₹"
-          price={order_amount.toFixed(2)}
-        />
-        {order_status === 'pending' && (
-          <View style={{ margin: scale(20) }}>
-            <TouchableOpacity 
-              style={[styles().cancelButtonContainer(currentTheme), {
-                backgroundColor: currentTheme.buttonBackground,
-                shadowColor: currentTheme.shadowColor,
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-                elevation: 5,
-                padding: scale(15),
-                borderRadius: scale(8),
-                alignItems: 'center'
-              }]}
-              onPress={() => setCancelModalVisible(true)}
-            >
-              <TextDefault
-                textColor={currentTheme.buttonTextPink}
-                bold
-                style={{ fontSize: scale(16) }}
-              >
-                {t('cancelOrder')}
-              </TextDefault>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+      {renderContent()}
       <CancelModal
         theme={currentTheme}
         modalVisible={cancelModalVisible}
         setModalVisible={() => setCancelModalVisible(false)}
         cancelOrder={handleCancelOrder}
         loading={cancelling}
-        orderStatus={order_status}
+        orderStatus={order?.status}
         orderId={id}
       />
     </View>
@@ -420,36 +487,60 @@ function OrderDetail(props) {
 }
 
 export const OrderStatusImage = ({ status }) => {
+  if (!status) {
+    return (
+      <View style={{ width: 150, height: 150, justifyContent: 'center', alignItems: 'center' }}>
+        <MaterialIcons name="hourglass-empty" size={100} color="#666666" />
+      </View>
+    )
+  }
+
+  const statusLower = status.toLowerCase()
   let imagePath = null;
-  switch (status) {
+
+  switch (statusLower) {
     case 'pending':
       imagePath = require('../../assets/SVG/order-placed.json')
       break
-    case 'accepted':
+    case 'processing':
       imagePath = require('../../assets/SVG/order-tracking-preparing.json')
       break
-    case 'processing':
-      imagePath = require('../../assets/SVG/food-picked.json')
-      break
-    case 'picked_up':
-      imagePath = require('../../assets/SVG/place-order.json')
-      break
     case 'delivered':
-      imagePath = require('../../assets/SVG/place-order.json')
+      imagePath = require('../../assets/SVG/order-delivered.json')
       break
+    case 'cancelled':
+      return (
+        <View style={{ width: 150, height: 150, justifyContent: 'center', alignItems: 'center' }}>
+          <MaterialIcons name="cancel" size={100} color="#FF0000" />
+        </View>
+      )
+    default:
+      return (
+        <View style={{ width: 150, height: 150, justifyContent: 'center', alignItems: 'center' }}>
+          <MaterialIcons name="help-outline" size={100} color="#666666" />
+        </View>
+      )
   }
 
-  if (!imagePath) return null
+  if (!imagePath) {
+    return (
+      <View style={{ width: 150, height: 150, justifyContent: 'center', alignItems: 'center' }}>
+        <MaterialIcons name="help-outline" size={100} color="#666666" />
+      </View>
+    )
+  }
 
-  return <LottieView
-    style={{
-      width: 150,
-      height: 150
-    }}
-    source={imagePath}
-    autoPlay
-    loop
-  />
+  return (
+    <LottieView
+      style={{
+        width: 150,
+        height: 150
+      }}
+      source={imagePath}
+      autoPlay
+      loop
+    />
+  )
 }
 
 export default OrderDetail

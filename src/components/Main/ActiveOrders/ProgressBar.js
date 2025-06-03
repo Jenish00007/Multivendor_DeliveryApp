@@ -45,32 +45,44 @@ export const orderStatuses = [
 ]
 
 export const checkStatus = status => {
+  if (!status) return orderStatuses[0] // Return pending status as default
   const obj = orderStatuses.filter(x => {
-    return x.key === status
+    return x.key === status.toUpperCase()
   })
-  return obj[0]
+  return obj[0] || orderStatuses[0] // Return pending status if no match found
 }
 
-export const ProgressBar = ({ currentTheme, item, customWidth }) => {
-  if (item.orderStatus === ORDER_STATUS_ENUM.CANCELLED) return null
-  useSubscription(
-    gql`
-      ${subscriptionOrder}
-    `,
-    { variables: { id: item._id } }
-  )
+export const ProgressBar = ({ currentTheme, item, customWidth, orderStatus }) => {
+  // Get status from either item.orderStatus or orderStatus prop
+  const status = item?.orderStatus || orderStatus
+
+  // Return null if status is cancelled or undefined
+  if (!status || status === ORDER_STATUS_ENUM.CANCELLED) return null
+
+  // Subscribe to order updates if we have an item with _id
+  if (item?._id) {
+    useSubscription(
+      gql`
+        ${subscriptionOrder}
+      `,
+      { variables: { id: item._id } }
+    )
+  }
 
   const defaultWidth = scale(50)
   const width = customWidth !== undefined ? customWidth : defaultWidth
 
+  // Get the current status object
+  const currentStatus = checkStatus(status)
+
   return (
     <View style={{ marginTop: scale(10) }}>
       <View style={{ flexDirection: 'row' }}>
-        {Array(checkStatus(item.orderStatus).status)
+        {Array(currentStatus.status)
           .fill(0)
-          .map((item, index) => (
+          .map((_, index) => (
             <View
-              key={index}
+              key={`active-${index}`}
               style={{
                 height: scale(4),
                 backgroundColor: currentTheme.primary,
@@ -79,11 +91,11 @@ export const ProgressBar = ({ currentTheme, item, customWidth }) => {
               }}
             />
           ))}
-        {Array(4 - checkStatus(item.orderStatus).status)
+        {Array(4 - currentStatus.status)
           .fill(0)
-          .map((item, index) => (
+          .map((_, index) => (
             <View
-              key={index}
+              key={`inactive-${index}`}
               style={{
                 height: scale(4),
                 backgroundColor: currentTheme.gray200,

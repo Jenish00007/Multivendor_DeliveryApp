@@ -10,7 +10,7 @@ import AuthContext from './Auth'
 import analytics from '../utils/analytics'
 import { useTranslation } from 'react-i18next'
 import { Alert } from 'react-native'
-const API_URL = 'https://api.qauds.in/api/v2'
+import { API_URL } from '../config/api'
 
 const UserContext = React.createContext({})
 
@@ -108,114 +108,79 @@ export const UserProvider = props => {
       }
 
       const headers = {
-        'moduleId': '1',
-        'zoneId': '[1]',
-        'latitude': location?.latitude?.toString() || '23.79354466376145',
-        'longitude': location?.longitude?.toString() || '90.41166342794895',
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       };
 
-      // List cart Items first to check if item already exists and check store
-      const cartResponse = await fetch(`https://6ammart-admin.6amtech.com/api/v1/customer/cart/list`, {
-        'method': 'GET',
+      // First check if product is already in cart
+      const cartResponse = await fetch(`${API_URL}/cart/all`, {
+        method: 'GET',
         headers: headers,
       });
-      const cartItems = await cartResponse.json();
+
+      const cartData = await cartResponse.json();
       
-      // Check if product is already in cart
-      const isProductInCart = cartItems?.some(cartItem => cartItem.item_id === item.id);
-      if (isProductInCart) {
-        throw new Error("This product is already in your cart.");
+      if (!cartResponse.ok) {
+        throw new Error(cartData.message || 'Failed to fetch cart');
       }
 
-      // Check if cart has items from a different store
-      if (cartItems && cartItems.length > 0) {
-        const firstItemStoreId = cartItems[0].item.store_id;
-        if (firstItemStoreId !== item.store_id) {
-          // Show confirmation dialog
-          return new Promise((resolve, reject) => {
-            Alert.alert(
-              "Different Store",
-              "Your cart contains items from a different store. Adding this item will remove all items from your current cart. Do you want to continue?",
-              [
-                {
-                  text: "Cancel",
-                  onPress: () => resolve({ success: false, message: "Operation cancelled" }),
-                  style: "cancel"
-                },
-                {
-                  text: "Yes",
-                  onPress: async () => {
-                    try {
-                      // Delete all existing cart items
-                      for (const cartItem of cartItems) {
-                        await fetch(`https://6ammart-admin.6amtech.com/api/v1/customer/cart/remove-item?cart_id=${cartItem.id}`, {
-                          method: 'DELETE',
-                          headers: headers
-                        });
-                      }
+      const existingItem = cartData.cartItems?.find(
+        cartItem => cartItem.product._id === item._id
+      );
 
-                      // Add new item
-                      const response = await fetch(`https://6ammart-admin.6amtech.com/api/v1/customer/cart/add`, {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({
-                          item_id: item.id,
-                          quantity: 1,
-                          price: item.price,
-                          name: item.name,
-                          image: item.image_full_url,
-                          model: "Item"
-                        }),
-                      });
+      if (existingItem) {
+        // Update quantity if item exists
+        const updateResponse = await fetch(`${API_URL}/cart/update/${existingItem._id}`, {
+          method: 'PUT',
+          headers: headers,
+          body: JSON.stringify({
+            quantity: existingItem.quantity + 1,
+            originalPrice: item.originalPrice ,
+            discountPrice: item.discountPrice 
+          })
+        });
 
-                      const result = await response.text();
-                      if (!response.ok) {
-                        throw new Error(result.message || "Failed to add product to cart.");
-                      }
+        const updateData = await updateResponse.json();
 
-                      // Update local cart state
-                      setCart([item]);
-                      resolve({ success: true, message: "Product added to cart successfully!" });
-                    } catch (error) {
-                      reject(error);
-                    }
-                  }
-                }
-              ]
-            );
-          });
+        if (!updateResponse.ok) {
+          throw new Error(updateData.message || 'Failed to update cart');
         }
+
+        return { 
+          success: true, 
+          message: 'Cart updated successfully' 
+        };
       }
 
-      // If we get here, either cart is empty or item is from same store
-      const response = await fetch(`https://6ammart-admin.6amtech.com/api/v1/customer/cart/add`, {
+      // Add new item to cart
+      const response = await fetch(`${API_URL}/cart/add`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
-          item_id: item.id,
+          productId: item._id,
           quantity: 1,
-          price: item.price,
-          name: item.name,
-          image: item.image_full_url,
-          model: "Item"
-        }),
+          originalPrice: item.originalPrice,
+          discountPrice: item.discountPrice
+        })
       });
 
-      const result = await response.text();
+      const data = await response.json();
+      console.log("Data",data)
       if (!response.ok) {
-        throw new Error(result.message || "Failed to add product to cart.");
+        throw new Error(data.message || 'Failed to add to cart');
       }
 
-      // Update local cart state
-      const updatedCart = [...cart, item];
-      setCart(updatedCart);
+      return { 
+        success: true, 
+        message: 'Product added to cart successfully' 
+      };
 
-      return { success: true, message: "Product added to cart successfully!" };
     } catch (error) {
       console.error('Error in addToCart:', error);
-      return { success: false, message: error.message };
+      return { 
+        success: false, 
+        message: error.message || 'Failed to add to cart' 
+      };
     }
   };
     

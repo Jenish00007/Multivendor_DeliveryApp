@@ -1,9 +1,8 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { View, TouchableOpacity, StatusBar, Platform } from 'react-native'
+import { View, TouchableOpacity, StatusBar, Platform, Alert } from 'react-native'
 import navigationService from '../../routes/navigationService'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import ActiveOrders from '../../components/MyOrders/ActiveOrders'
-import PastOrders from '../../components/MyOrders/PastOrders'
 import ThemeContext from '../../ui/ThemeContext/ThemeContext'
 import { theme } from '../../utils/themeColors'
 import styles from './styles'
@@ -17,26 +16,17 @@ import { HeaderBackButton } from '@react-navigation/elements'
 import { useTranslation } from 'react-i18next'
 import ReviewModal from '../../components/Review'
 import AuthContext from '../../context/Auth'
-const API_URL = 'https://api.qauds.in/api/v2'
-const orderStatusActive = ['PENDING', 'PICKED', 'ACCEPTED', 'ASSIGNED']
-const orderStatusInactive = ['DELIVERED', 'COMPLETED']
+import { API_URL } from '../../config/api'
+
+const orderStatusActive = ['PENDING', 'PICKED', 'ACCEPTED', 'ASSIGNED', 'PROCESSING']
 
 function MyOrders(props) {
   const reviewModalRef = useRef()
   const [reviewInfo, setReviewInfo] = useState()
   const analytics = Analytics()
   const { t } = useTranslation()
-  // const {
-  //   orders,
-  //   loadingOrders,
-  //   errorOrders,
-  //   reFetchOrders,
-  //   fetchMoreOrdersFunc,
-  //   networkStatusOrders
-  // } = useContext(OrdersContext)
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
-  const [selectedTab, setSelectedTab] = useState('current')
   const inset = useSafeAreaInsets()
   const { token } = useContext(AuthContext)
 
@@ -86,18 +76,25 @@ function MyOrders(props) {
   }
 
   const activeOrders = useMemo(() => {
-    return orders.filter(o => orderStatusActive.includes(o.order_status?.toUpperCase()))
+    return orders.filter(o => orderStatusActive.includes(o.status?.toUpperCase()))
   }, [orders])
 
-  const pastOrders = useMemo(() => {
-    return orders.filter(o => orderStatusInactive.includes(o.order_status?.toUpperCase()))
-  }, [orders])
-
-  const openReviewModal = ()=>{
+  const openReviewModal = () => {
     reviewModalRef.current.open()
   }
-  const closeReviewModal = ()=>{
+
+  const closeReviewModal = () => {
     reviewModalRef.current.close()
+  }
+
+  const onPressReview = (order, selectedRating) => {
+    setReviewInfo({order, selectedRating})
+    openReviewModal()
+  }
+
+  // Reload orders function for pull-to-refresh
+  const reloadOrders = () => {
+    fetchOrders()
   }
 
   useEffect(() => {
@@ -148,38 +145,7 @@ function MyOrders(props) {
       },
       headerTintColor: '#000000'
     })
-  }, [props.navigation, selectedTab])
-
-  const TabButton = ({ text, onPress, isSelected, currentTheme }) => {
-    return (
-      <View
-        style={
-          isSelected
-            ? styles(currentTheme).activeTabStyles
-            : styles(currentTheme).inactiveTabStyles
-        }>
-        <TouchableOpacity onPress={onPress}>
-          <TextDefault
-            H4
-            bold
-            textColor={isSelected ? currentTheme.newFontcolor : currentTheme.gray500}>
-            {t(text)}
-          </TextDefault>
-        </TouchableOpacity>
-      </View>
-    )
-  }
-
-  const onPressReview = (order, selectedRating)=>{
-    setReviewInfo({order, selectedRating})
-    openReviewModal()
-  }
-
-  // Reload orders function for pull-to-refresh
-  const reloadOrders = () => {
-    fetchOrders()
-  }
-  
+  }, [props.navigation])
 
   return (
     <>
@@ -189,48 +155,13 @@ function MyOrders(props) {
         translucent={false}
       />
       <View style={styles(currentTheme).container}>
-        <View style={styles(currentTheme).tabContainer}>
-          <TabButton
-            text={t('current')}
-            onPress={() => setSelectedTab('current')}
-            isSelected={selectedTab === 'current'}
-            currentTheme={currentTheme}
-          />
-
-          <TabButton
-            text={t('past')}
-            onPress={() => setSelectedTab('past')}
-            isSelected={selectedTab === 'past'}
-            currentTheme={currentTheme}
-          />
-        </View>
-        {selectedTab === 'current' && (
-          <ActiveOrders
-            navigation={props.navigation}
-            activeOrders={orders}
-            loading={loadingOrders}
-            error={errorOrders}
-            reFetchOrders={reloadOrders}
-          />
-        )}
-        {selectedTab === 'past' && (
-          // <PastOrders
-          //   navigation={props.navigation}
-          //   pastOrders={pastOrders}
-          //   loading={loadingOrders}
-          //   error={errorOrders}
-          //   onPressReview={onPressReview}
-          //   reFetchOrders={reloadOrders}
-          // />
-          <ActiveOrders
-            navigation={props.navigation}
-            activeOrders={orders}
-            loading={loadingOrders}
-            error={errorOrders}
-            reFetchOrders={reloadOrders}
-          />
-        )}
-
+        <ActiveOrders
+          navigation={props.navigation}
+          activeOrders={activeOrders}
+          loading={loadingOrders}
+          error={errorOrders}
+          reFetchOrders={reloadOrders}
+        />
         <View
           style={{
             paddingBottom: inset.bottom,

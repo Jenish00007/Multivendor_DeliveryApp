@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "description": "Ordering app built in React Native using Expo for IOS and Android.",
     "slug": "qauds",
-    "owner": "qauds",
+    "owner": "jenish67",
     "privacy": "public",
     "androidStatusBar": {
       "backgroundColor": "#000000"
@@ -27,7 +27,7 @@
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "com.qauds.qauds",
+      "bundleIdentifier": "com.Smartkal.founder",
       "config": {
         "googleMapsApiKey": "###### Key #######"
       },
@@ -55,8 +55,8 @@
       "androidCollapsedTitle": "Qauds"
     },
     "android": {
-      "versionCode": 6,
-      "package": "com.qauds.qauds",
+      "versionCode": 10,
+      "package": "com.Smartkal.founder",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
       "config": {
@@ -101,7 +101,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "dab3c49f-d3ca-4967-b7c0-fd9f785255de"
+        "projectId": "06c00e46-fba8-45e5-848c-c3e3ba1ddfe8"
       }
     }
   }

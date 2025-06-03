@@ -15,7 +15,9 @@ import Products from '../../components/Products/Products'
 import Spinner from '../../components/Spinner/Spinner'
 import ErrorView from '../../components/ErrorView/ErrorView'
 import EmptyView from '../../components/EmptyView/EmptyView'
-const API_URL = 'https://api.qauds.in/api/v2'
+
+import { API_URL } from '../../config/api'
+
 // Context
 import { LocationContext } from '../../context/Location'
 import ThemeContext from '../../ui/ThemeContext/ThemeContext'
@@ -48,7 +50,6 @@ function Favourite() {
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': token ? `Bearer ${token}` : '',
-       
       }
       
       const response = await fetch(`${API_URL}/favorites/all`, {
@@ -67,7 +68,9 @@ function Favourite() {
         throw new Error('Empty response received');
       }
       
-      setFavoriteData(data.favorites || [])
+      // Ensure we have valid data before setting state
+      const validFavorites = Array.isArray(data.favorites) ? data.favorites : []
+      setFavoriteData(validFavorites)
       setError(null)
     } catch (err) {
       console.log('Fetch error:', err)
@@ -79,18 +82,22 @@ function Favourite() {
   }, [location, token])
 
   const handleRemoveFromWishlist = async (itemId) => {
+    if (!itemId) {
+      console.log('Invalid item ID')
+      return
+    }
+
     try {
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': token ? `Bearer ${token}` : '',
       }
 
-      const response = await fetch('https://6ammart-admin.6amtech.com/api/v1/customer/wish-list/remove', {
+      const response = await fetch(`${API_URL}/favorites/remove/${itemId}`, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify({
-          item_id: itemId,
-          module_id: 4  // For items
+          item_id: itemId
         })
       })
 
@@ -153,21 +160,28 @@ function Favourite() {
               paddingBottom: 20,
               flexGrow: 1
             }}
-            renderItem={({ item }) => (
-              <View style={{ 
-                width: '55%',
-                marginBottom: 10
-              }}>
-                <Products 
-                  item={item} 
-                  onRemoveFromWishlist={() => handleRemoveFromWishlist(item.id)}
-                  isFavorite={true}
-                  theme={currentTheme}
-                  horizontal={false}
-                />
-              </View>
-            )}
-            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => {
+              if (!item || !item.product) {
+                console.log('Invalid item in favorites:', item)
+                return null
+              }
+              
+              return (
+                <View style={{ 
+                  width: '55%',
+                  marginBottom: 10
+                }}>
+                  <Products 
+                    item={item.product} 
+                    onRemoveFromWishlist={() => handleRemoveFromWishlist(item._id)}
+                    isFavorite={true}
+                    theme={currentTheme}
+                    horizontal={false}
+                  />
+                </View>
+              )
+            }}
+            keyExtractor={(item) => item?._id?.toString() || Math.random().toString()}
             ListEmptyComponent={
               <View style={{ 
                 flex: 1,

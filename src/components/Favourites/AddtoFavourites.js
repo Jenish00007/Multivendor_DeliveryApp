@@ -5,6 +5,7 @@ import { LocationContext } from '../../context/Location';
 import AuthContext from '../../context/Auth';
 import UserContext from '../../context/User';
 import { useNavigation } from '@react-navigation/native';
+import { API_URL } from '../../config/api'
 
 const AddToFavourites = ({ product, restaurantId }) => {
     const [isFavourite, setIsFavourite] = useState(false);
@@ -15,33 +16,30 @@ const AddToFavourites = ({ product, restaurantId }) => {
     const navigation = useNavigation();
 
     useEffect(() => {
-        if (token) {
+        if (token && product?._id) {
             checkFavouriteStatus();
         }
-    }, [token, product?.id, restaurantId]);
+    }, [token, product?._id, restaurantId]);
 
-    //To check whether the product is in wishlist or not
     const checkFavouriteStatus = async () => {
-        if (!token) return;
+        if (!token || !product?._id) return;
         try {
-            //const moduleIds = [1, 4]
-            //const queryString = moduleIds.map(id => `moduleId=${id}`).join('&');      
             const headers = {
-                //'moduleId': '1',
-                'zoneId': '[1]',
-                'latitude': location?.latitude?.toString() || '23.79354466376145',
-                'longitude': location?.longitude?.toString() || '90.41166342794895',
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
             };
-            const response = await fetch(`https://6ammart-admin.6amtech.com/api/v1/customer/wish-list`, {
+            
+            const response = await fetch(`${API_URL}/favorites/all`, {
                 method: 'GET',
                 headers: headers,
             });
+
             if (response.ok) {
-                const result = await response.json();                
-                const itemList = restaurantId ? result?.store || [] : result?.item || [];
-                const isInWishlist = itemList.some(item => item.id === (restaurantId || product?.id));
+                const result = await response.json();
+                const favorites = result.favorites || [];
+                const isInWishlist = favorites.some(item => 
+                    item.product?._id === product._id
+                );
                 setIsFavourite(isInWishlist);
             }
         } catch (error) {
@@ -50,7 +48,7 @@ const AddToFavourites = ({ product, restaurantId }) => {
     };
 
     const toggleFavourites = async () => {
-        if (loading) return;
+        if (loading || !product?._id) return;
         
         if (!isLoggedIn) {
             navigation.navigate('Login');
@@ -59,44 +57,59 @@ const AddToFavourites = ({ product, restaurantId }) => {
         
         setLoading(true);
         try {
-            const idKey = restaurantId ? 'store_id' : 'item_id';
-            const idValue = restaurantId || product?.id;
+            const productId = product._id;
+            if (!productId) {
+                throw new Error('Invalid product ID');
+            }
+
             const endpoint = isFavourite
-                ? `https://6ammart-admin.6amtech.com/api/v1/customer/wish-list/remove?${idKey}=${idValue}`
-                : `https://6ammart-admin.6amtech.com/api/v1/customer/wish-list/add?${idKey}=${idValue}`;
+                ? `${API_URL}/favorites/remove/${productId}`
+                : `${API_URL}/favorites/add`;
             
             const headers = {
-                'moduleId': '1',
-                'zoneId': '[1]',
-                'latitude': location?.latitude?.toString() || '23.79354466376145',
-                'longitude': location?.longitude?.toString() || '90.41166342794895',
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
             };
 
             const response = await fetch(endpoint, {
                 method: isFavourite ? 'DELETE' : 'POST',
                 headers: headers,
+                body: isFavourite ? undefined : JSON.stringify({
+                    productId: productId
+                })
             });
-
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
 
             const result = await response.json();
 
-            setIsFavourite(!isFavourite);
-            Alert.alert(
-                isFavourite ? "Removed" : "Success",
-                isFavourite ? "Removed from Favourites." : "Added to Favourites."
-            );
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to update favorites');
+            }
+            
+            if (result.success) {
+                setIsFavourite(!isFavourite);
+                Alert.alert(
+                    isFavourite ? "Removed" : "Success",
+                    isFavourite ? "Removed from Favourites." : "Added to Favourites."
+                );
+            } else {
+                throw new Error(result.message || 'Failed to update favorites');
+            }
         } catch (error) {
             console.error("Error toggling favourites:", error);
-            Alert.alert("Error", "Failed to update Favourites.");
+            Alert.alert(
+                "Error", 
+                error.message === 'Product not found' 
+                    ? 'This product is no longer available' 
+                    : error.message || "Failed to update Favourites."
+            );
         } finally {
             setLoading(false);
         }
     };
+
+    if (!product?._id) {
+        return null;
+    }
 
     return (
         <TouchableOpacity onPress={toggleFavourites} disabled={loading}>

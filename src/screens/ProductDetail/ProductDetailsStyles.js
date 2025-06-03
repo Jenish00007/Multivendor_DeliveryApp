@@ -1,161 +1,187 @@
 import { StyleSheet, Dimensions } from 'react-native';
+import { scale } from '../../utils/scaling';
 
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#fff'
     },
     scrollView: {
-        flex: 1,
+        flex: 1
     },
     imageContainer: {
         width: '100%',
-        height: 300,
-        position: 'relative',
+        height: width,
+        position: 'relative'
     },
     productImage: {
-        width: '100%',
-        height: '100%',
+        width: width,
+        height: width,
+        resizeMode: 'cover'
     },
     dotContainer: {
         position: 'absolute',
-        bottom: 15,
-        left: 0,
-        right: 0,
+        bottom: scale(20),
         flexDirection: 'row',
         justifyContent: 'center',
-        alignItems: 'center',
+        width: '100%'
     },
     dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        width: scale(8),
+        height: scale(8),
+        borderRadius: scale(4),
         backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        margin: 4,
+        marginHorizontal: scale(4)
     },
     activeDot: {
-        backgroundColor: '#ffffff',
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+        backgroundColor: '#fff'
     },
     favIconContainer: {
         position: 'absolute',
-        top: 15,
-        right: 15,
-        backgroundColor: '#fff',
-        borderRadius: 50,
-        padding: 8,
-        elevation: 5,
+        top: scale(20),
+        right: scale(20),
+        zIndex: 1
     },
     infoSection: {
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        marginTop: -20,
-        paddingHorizontal: 20,
-        paddingTop: 25,
-        paddingBottom: 100,
+        padding: scale(20),
+        borderTopLeftRadius: scale(20),
+        borderTopRightRadius: scale(20),
+        marginTop: -scale(20)
     },
     nameAndPrice: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 10,
+        marginBottom: scale(15)
     },
     productName: {
-        fontSize: 22,
+        fontSize: scale(24),
         fontWeight: 'bold',
-        flex: 1,
+        marginBottom: scale(10)
+    },
+    priceContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: scale(10)
+    },
+    originalPrice: {
+        fontSize: scale(16),
+        textDecorationLine: 'line-through'
     },
     productPrice: {
-        fontSize: 20,
-        fontWeight: '700',
+        fontSize: scale(20),
+        fontWeight: 'bold'
+    },
+    categoryContainer: {
+        marginBottom: scale(15)
+    },
+    categoryText: {
+        fontSize: scale(14)
     },
     ratingStockContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 15,
+        marginBottom: scale(15)
     },
     ratingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: scale(5)
     },
     starsContainer: {
         flexDirection: 'row',
-        marginRight: 8,
+        gap: scale(2)
     },
     ratingText: {
-        fontSize: 14,
+        fontSize: scale(14)
     },
     stockBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: scale(10),
+        paddingVertical: scale(5),
+        borderRadius: scale(15)
     },
     stockText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: scale(12),
+        fontWeight: '500'
     },
     divider: {
         height: 1,
-        marginBottom: 20,
+        marginVertical: scale(15)
     },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 8,
+    shopContainer: {
+        marginBottom: scale(15)
+    },
+    shopInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: scale(10),
+        marginTop: scale(10)
+    },
+    shopAvatar: {
+        width: scale(50),
+        height: scale(50),
+        borderRadius: scale(25)
+    },
+    shopDetails: {
+        flex: 1
+    },
+    shopName: {
+        fontSize: scale(16),
+        fontWeight: '500',
+        marginBottom: scale(5)
+    },
+    shopAddress: {
+        fontSize: scale(14)
     },
     descriptionContainer: {
-        marginBottom: 20,
+        marginBottom: scale(15)
+    },
+    sectionTitle: {
+        fontSize: scale(18),
+        fontWeight: '600',
+        marginBottom: scale(10)
     },
     productDescription: {
-        fontSize: 14,
-        lineHeight: 22,
+        fontSize: scale(14),
+        lineHeight: scale(20)
     },
-    nutritionContainer: {
-        marginBottom: 20,
+    tagsContainer: {
+        marginBottom: scale(15)
     },
-    nutritionText: {
-        fontSize: 14,
-        lineHeight: 22,
-        marginLeft: 4,
+    tagsText: {
+        fontSize: scale(14),
+        lineHeight: scale(20)
     },
     bottomActions: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
         flexDirection: 'row',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        elevation: 8,
+        padding: scale(15),
+        gap: scale(10),
+        borderTopWidth: 1,
+        borderTopColor: '#eee'
     },
     cartButton: {
         flex: 1,
         flexDirection: 'row',
-        justifyContent: 'center',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 8,
-        marginRight: 10,
+        justifyContent: 'center',
+        padding: scale(15),
+        borderRadius: scale(10),
+        gap: scale(10)
     },
     addButton: {
-        flex: 1.5,
+        flex: 1,
         flexDirection: 'row',
-        justifyContent: 'center',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 8,
-        marginLeft: 10,
+        justifyContent: 'center',
+        padding: scale(15),
+        borderRadius: scale(10),
+        gap: scale(10)
     },
     buttonText: {
         color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-        marginLeft: 8,
-    },
+        fontSize: scale(16),
+        fontWeight: '500'
+    }
 });
 
 export default styles;

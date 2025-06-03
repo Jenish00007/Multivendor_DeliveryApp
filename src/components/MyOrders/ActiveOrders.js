@@ -14,16 +14,12 @@ import EmptyView from '../EmptyView/EmptyView';
 import AuthContext from '../../context/Auth';
 import { StatusBar } from 'react-native';
 
-const ActiveOrders = ({ navigation }) => {
+const ActiveOrders = ({ navigation, activeOrders, loading, error, reFetchOrders }) => {
   const { t } = useTranslation();
   const themeContext = useContext(ThemeContext);
   const currentTheme = theme[themeContext.ThemeValue];
   const configuration = useContext(ConfigurationContext);
   const { token } = useContext(AuthContext);
-  
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeOrders, setActiveOrders] = useState([]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -42,56 +38,6 @@ const ActiveOrders = ({ navigation }) => {
       headerTitleAlign: 'center'
     });
   }, [navigation, currentTheme, t]);
-
-  useEffect(() => {
-    fetchActiveOrders();
-    
-    // Set up polling to refresh orders periodically
-    const intervalId = setInterval(() => {
-      fetchActiveOrders();
-    }, 30000); // Poll every 30 seconds
-    
-    return () => clearInterval(intervalId);
-  }, []);
-
-  const fetchActiveOrders = async () => {
-    try {
-      setLoading(true);
-      const headers = {
-        'moduleId': '1',
-        'zoneId': '[1]',
-        'Authorization': token ? `Bearer ${token}` : ''
-      };
-
-      const response = await fetch(
-        'https://6ammart-admin.6amtech.com/api/v1/customer/order/running-orders?offset=1&limit=10',
-        {
-          method: 'GET',
-          headers: headers
-        }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data || !data.orders || !Array.isArray(data.orders)) {
-        console.error('Invalid API response format:', data);
-        setActiveOrders([]);
-        return;
-      }
-      
-      setActiveOrders(data.orders);
-      setError(null);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch active orders');
-      console.error('Error fetching active orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const emptyView = () => {
     return (
@@ -114,7 +60,7 @@ const ActiveOrders = ({ navigation }) => {
     );
   };
 
-  if (loading && activeOrders.length === 0) {
+  if (loading && (!activeOrders || activeOrders.length === 0)) {
     return (
       <Spinner
         size={'small'}
@@ -136,9 +82,9 @@ const ActiveOrders = ({ navigation }) => {
       <FlatList
         data={activeOrders}
         renderItem={renderItem}
-        keyExtractor={(item) => item?.id?.toString()}
+        keyExtractor={(item) => item?._id?.toString()}
         ListEmptyComponent={emptyView}
-        onRefresh={fetchActiveOrders}
+        onRefresh={reFetchOrders}
         refreshing={loading}
         contentContainerStyle={styles.listContent}
       />
@@ -151,32 +97,18 @@ const OrderCard = ({ item, navigation, currentTheme, configuration }) => {
   
   if (!item) return null;
   
-  const remainingTime = calulateRemainingTime(item) || 15;
-  const orderId = item.id;
-  const date = new Date(item.created_at);
+  const orderId = item._id;
+  const date = new Date(item.createdAt);
   const formattedDate = `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}, ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
   
-  const orderStatus = item.order_status?.toUpperCase() || 'PENDING';
+  const orderStatus = item.status?.toUpperCase() || 'PENDING';
   
   return (
     <TouchableOpacity
       activeOpacity={0.7}
       style={[styles.cardContainer, {backgroundColor: currentTheme.white}]}
-      onPress={() => navigation.navigate('OrderDetail', { id: orderId })}>
+      onPress={() => navigation.navigate('OrderDetail', { id: item._id })}>
       <View style={styles.cardHeader}>
-        {item.store?.logo_full_url ? (
-          <Image
-            style={styles.restaurantLogo}
-            source={{uri: item.store.logo_full_url}}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.logoPlaceholder, {backgroundColor: currentTheme.secondaryBackground}]}>
-            <TextDefault textColor={currentTheme.fontMainColor} center bold>
-              {item.store?.name?.charAt(0) || 'R'}
-            </TextDefault>
-          </View>
-        )}
         <View style={styles.orderInfoContainer}>
           <TextDefault textColor={currentTheme.fontMainColor} bold>
             {`Order #${orderId}`}
@@ -193,32 +125,30 @@ const OrderCard = ({ item, navigation, currentTheme, configuration }) => {
       </View>
 
       <View style={styles.orderDetails}>
-        <View style={styles.orderDetailRow}>
-          <TextDefault style={styles.orderDetailLabel}>
-            {t('Restaurant')}
-          </TextDefault>
-          <TextDefault style={styles.orderDetailValue}>
-            {item.store?.name || 'N/A'}
+        <View style={styles.itemsContainer}>
+          {item.items?.map((product, index) => (
+            <View key={index} style={styles.itemRow}>
+              <TextDefault small textColor={currentTheme.fontSecondColor}>
+                {product.name}
+              </TextDefault>
+              <TextDefault small textColor={currentTheme.fontSecondColor}>
+                {product.shopName}
+              </TextDefault>
+            </View>
+          ))}
+        </View>
+        
+        <View style={styles.priceContainer}>
+          <TextDefault textColor={currentTheme.fontMainColor} bold>
+            {`Total: ₹${item.totalPrice?.toFixed(2)}`}
           </TextDefault>
         </View>
-        <View style={styles.orderDetailRow}>
-          <TextDefault style={styles.orderDetailLabel}>
-            {t('Amount')}
-          </TextDefault>
-          <TextDefault style={styles.orderDetailValue}>
-            ₹{item.order_amount?.toFixed(2) || '0.00'}
-          </TextDefault>
-        </View>
-      </View>
 
-      <View style={styles.trackButtonContainer}>
-        <TouchableOpacity 
-          style={[styles.trackButton, {borderColor: currentTheme.statusColor || 'green'}]}
-          onPress={() => navigation.navigate('OrderDetail', { id: orderId })}>
-          <TextDefault small textColor={currentTheme.statusColor || 'green'}>
-            {t('View Details')}
+        <View style={styles.addressContainer}>
+          <TextDefault small textColor={currentTheme.fontSecondColor}>
+            {`${item.shippingAddress?.address}, ${item.shippingAddress?.city}, ${item.shippingAddress?.state} - ${item.shippingAddress?.pincode}`}
           </TextDefault>
-        </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -229,79 +159,53 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    padding: scale(15),
+    padding: scale(10),
   },
   cardContainer: {
+    marginBottom: scale(10),
     borderRadius: scale(8),
-    marginBottom: scale(15),
+    padding: scale(15),
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    padding: scale(15),
+    shadowRadius: 4,
   },
   cardHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: scale(10),
   },
-  restaurantLogo: {
-    width: scale(50),
-    height: scale(50),
-    borderRadius: scale(25),
-    backgroundColor: '#f0f0f0',
-  },
-  logoPlaceholder: {
-    width: scale(50),
-    height: scale(50),
-    borderRadius: scale(25),
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-  },
   orderInfoContainer: {
     flex: 1,
-    marginLeft: scale(15),
   },
   statusBadge: {
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(6),
-    borderRadius: scale(20),
-    backgroundColor: '#f0f0f0',
-  },
-  trackButtonContainer: {
-    marginTop: scale(10),
-    alignItems: 'flex-end',
-  },
-  trackButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: scale(15),
-    paddingVertical: scale(8),
-    borderRadius: scale(20),
-    borderWidth: 1,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(4),
   },
   orderDetails: {
     marginTop: scale(10),
-    paddingTop: scale(10),
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
   },
-  orderDetailRow: {
+  itemsContainer: {
+    marginBottom: scale(10),
+  },
+  itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: scale(5),
   },
-  orderDetailLabel: {
-    color: '#666',
-    fontSize: scale(12),
+  priceContainer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E0E0E0',
+    paddingTop: scale(10),
+    marginBottom: scale(10),
   },
-  orderDetailValue: {
-    color: '#333',
-    fontSize: scale(12),
-    fontWeight: '500',
+  addressContainer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E0E0E0',
+    paddingTop: scale(10),
   },
 });
 
