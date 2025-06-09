@@ -74,6 +74,7 @@ import CancellationPolicy from '../screens/Policies/CancellationPolicy'
 import ShippingPolicy from '../screens/Policies/ShippingPolicy'
 import Home from '../screens/Delivery_Man/Home'
 import OrderHistoryScreen from '../screens/Delivery_Man/Order_history'
+import DeliveryHome from '../screens/Delivery_Man/Home'
 
 
 const NavigationStack = createStackNavigator()
@@ -109,7 +110,7 @@ function NoDrawer() {
       })}
     >
    
-      <NavigationStack.Screen  options={{ headerShown: true, headerTitle: 'Delivery Man App' }} name='Menu' component={Home} />
+      <NavigationStack.Screen  options={{ headerShown: false, headerTitle: 'Delivery Man App' }} name='Menu' component={Home} />
       <NavigationStack.Screen
         name='Restaurant'
         component={Restaurant}
@@ -188,6 +189,7 @@ function NoDrawer() {
       <NavigationStack.Screen options={{ headerShown: false }} name='OrderHistoryScreen' component={OrderHistoryScreen}/>
       
       <NavigationStack.Screen name='DeliveryTrackingScreen' component={DeliveryTrackingScreen}/>
+      <NavigationStack.Screen name='DeliveryHome' component={DeliveryHome}/>
     
       <NavigationStack.Screen name='Notification' component={Notification}/>
       <NavigationStack.Screen name='ProductDetail' component={ProductDetails}/>
@@ -217,7 +219,7 @@ function LocationStack() {
       />
       <Location.Screen name='SelectLocation' component={SelectLocation} />
       <Location.Screen name='AddNewAddress' component={AddNewAddress} />
-      <Location.Screen name='Menu' options={{ headerShown: true, headerTitle: 'Delivery App' }} component={Menu} />
+      <Location.Screen name='Menu'  options={{ header: () => null }} component={Menu} />
     </Location.Navigator>
   )
 }

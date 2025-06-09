@@ -257,19 +257,19 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#10B981',
+    backgroundColor: '#F16122',
     marginRight: 12,
     marginTop: 4,
   },
   deliveryDot: {
     backgroundColor: '#FFFFFF',
     borderWidth: 3,
-    borderColor: '#10B981',
+    borderColor: '#F16122',
   },
   routeDivider: {
     width: 2,
     height: 20,
-    backgroundColor: '#10B981',
+    backgroundColor: '#F16122',
     marginLeft: 5,
     marginVertical: 8,
   },
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   deliveryAddressText: {
-    color: '#10B981',
+    color: '#F16122',
     fontWeight: '600',
   },
   customerSection: {
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   finishButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10B981',
+    backgroundColor: '#F16122',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 25,

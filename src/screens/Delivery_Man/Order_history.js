@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,59 +8,75 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import BottomTab from '../../components/BottomTab/BottomTab';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../config/api';
+
 const OrderHistoryScreen = () => {
   const navigation = useNavigation();
-  const orderHistory = [
-    {
-      id: 1,
-      orderNumber: "#2CE5DW",
-      items: 2,
-      date: "30/04/2021",
-      time: "11:05 AM"
-    },
-    {
-      id: 2,
-      orderNumber: "#2CE5DW",
-      items: 2,
-      date: "30/04/2021",
-      time: "11:05 AM"
-    },
-    {
-      id: 3,
-      orderNumber: "#2CE5DW",
-      items: 2,
-      date: "30/04/2021",
-      time: "11:05 AM"
-    },
-    {
-      id: 4,
-      orderNumber: "#2CE5DW",
-      items: 2,
-      date: "30/04/2021",
-      time: "11:05 AM"
-    },
-    {
-      id: 5,
-      orderNumber: "#2CE5DW",
-      items: 2,
-      date: "30/04/2021",
-      time: "11:05 AM"
-    },
-    {
-      id: 6,
-      orderNumber: "#2CE5DW",
-      items: 2,
-      date: "30/04/2021",
-      time: "11:05 AM"
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchOrderHistory();
+  }, []);
+
+  const fetchOrderHistory = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      const response = await fetch(`${API_URL}/order/deliveryman/order-history`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-localization': 'en',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch order history');
+      }
+
+      // Transform the data to match our display format
+      const transformedOrders = (data.orders || []).map(order => ({
+        id: order._id,
+        order_number: order.order_number || order._id,
+        order_items_count: order.items?.length || 0,
+        created_at: new Date(order.created_at).toLocaleString(),
+        status: order.status,
+        payment_method: order.payment_method,
+        total_amount: order.total_amount,
+        delivery_address: order.delivery_address,
+        restaurant_name: order.restaurant?.name || 'Store',
+      }));
+
+      setOrderHistory(transformedOrders);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const handleOrderPress = (order) => {
-    navigation.navigate('OrderDetailsScreen', { orderId: order.id });
+    navigation.navigate('OrderDetailsScreen', { 
+      orderId: order.id,
+      order: order
+    });
   };
 
   const OrderItem = ({ order }) => (
@@ -75,18 +91,62 @@ const OrderHistoryScreen = () => {
       </View>
       
       <View style={styles.orderDetails}>
-        <Text style={styles.orderNumber}>Order ID: {order.orderNumber}</Text>
-        <Text style={styles.itemCount}>{order.items} Items</Text>
+        <Text style={styles.orderNumber}>Order ID: {order.order_number}</Text>
+        <Text style={styles.itemCount}>{order.order_items_count} Items</Text>
+        <Text style={styles.restaurantName}>{order.restaurant_name}</Text>
         
         <View style={styles.orderMeta}>
           <View style={styles.dateTimeContainer}>
             <Text style={styles.metaIcon}>⏰</Text>
-            <Text style={styles.dateTime}>{order.date} | {order.time}</Text>
+            <Text style={styles.dateTime}>{order.created_at}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+            <Text style={styles.statusText}>{order.status}</Text>
           </View>
         </View>
       </View>
     </TouchableOpacity>
   );
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
+        return '#4CAF50';
+      case 'cancelled':
+        return '#F44336';
+      case 'processing':
+        return '#2196F3';
+      case 'out_for_delivery':
+        return '#FF9800';
+      default:
+        return '#9E9E9E';
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F16122" />
+          <Text style={styles.loadingText}>Loading order history...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Icon name="alert-circle-outline" size={48} color="#F16122" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchOrderHistory}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -94,7 +154,7 @@ const OrderHistoryScreen = () => {
       
       {/* Header */}
       <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="#111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Order History</Text>
@@ -103,9 +163,16 @@ const OrderHistoryScreen = () => {
 
       {/* Order History List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {orderHistory.map((order) => (
-          <OrderItem key={order.id} order={order} />
-        ))}
+        {orderHistory.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Icon name="receipt-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.emptyText}>No order history found</Text>
+          </View>
+        ) : (
+          orderHistory.map((order) => (
+            <OrderItem key={order.id} order={order} />
+          ))
+        )}
       </ScrollView>
 
       <BottomTab screen="HISTORY" />
@@ -129,10 +196,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
-  },
-  backArrow: {
-    fontSize: 18,
-    color: '#374151',
   },
   headerTitle: {
     flex: 1,
@@ -199,11 +262,17 @@ const styles = StyleSheet.create({
   itemCount: {
     fontSize: 14,
     color: '#6B7280',
+    marginBottom: 4,
+  },
+  restaurantName: {
+    fontSize: 14,
+    color: '#6B7280',
     marginBottom: 8,
   },
   orderMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   dateTimeContainer: {
     flexDirection: 'row',
@@ -218,25 +287,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
   },
-  bottomNav: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  navItem: {
+  statusText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  loadingContainer: {
     flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 8,
   },
-  activeNavItem: {
-    backgroundColor: '#10B981',
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#F16122',
     borderRadius: 8,
   },
-  navIcon: {
-    fontSize: 20,
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    marginTop: 40,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });
 

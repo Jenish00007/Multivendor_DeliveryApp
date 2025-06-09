@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BottomTab from '../../components/BottomTab/BottomTab';
 import {
   View,
@@ -8,103 +8,327 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
-  
+  RefreshControl,
+  Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../config/api';
+import axios from 'axios';
 
 const OrderRequestScreen = () => {
   const navigation = useNavigation();
-  const [orders, setOrders] = useState([
-    {
-      id: 1,
-      restaurant: "Mc Donald's",
-      cuisine: "American cuisine, fast food",
-      items: 2,
-      timeAgo: "2 mins Ago",
-      tag: "COD",
-      tagColor: "#10B981"
-    },
-    {
-      id: 2,
-      restaurant: "Mc Donald's",
-      cuisine: "American cuisine, fast food",
-      items: 2,
-      timeAgo: "2 mins Ago",
-      tag: "Digitally Paid",
-      tagColor: "#10B981"
-    },
-    {
-      id: 3,
-      restaurant: "Mc Donald's",
-      cuisine: "American cuisine, fast food",
-      items: 2,
-      timeAgo: "2 mins Ago",
-      tag: "COD",
-      tagColor: "#10B981"
-    },
-    {
-      id: 4,
-      restaurant: "Mc Donald's",
-      cuisine: "American cuisine, fast food",
-      items: 2,
-      timeAgo: "2 mins Ago",
-      tag: "COD",
-      tagColor: "#10B981"
+  const [orders, setOrders] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [deliveryManId, setDeliveryManId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [additionalNote, setAdditionalNote] = useState('');
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching orders...");
+      
+      const storedToken = await AsyncStorage.getItem('token');
+      if (!storedToken) {
+        Alert.alert(
+          "Authentication Required",
+          "Please login to view orders",
+          [{ text: "OK", onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }]
+        );
+        return;
+      }
+
+      const authToken = `Bearer ${storedToken}`;
+      
+      // Get delivery man ID first
+      const meResponse = await axios.get(`${API_URL}/deliveryman/me`, {
+        headers: {
+          'Authorization': authToken,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!meResponse.data.success || !meResponse.data.deliveryMan?._id) {
+        throw new Error('Invalid delivery man data received');
+      }
+
+      const currentDeliveryManId = meResponse.data.deliveryMan._id;
+      setDeliveryManId(currentDeliveryManId);
+      console.log("Delivery man ID set:", currentDeliveryManId);
+
+      // Fetch orders
+      const ordersResponse = await axios.get(`${API_URL}/deliveryman/orders`, {
+        headers: {
+          'Authorization': authToken,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!ordersResponse.data.success || !Array.isArray(ordersResponse.data.orders)) {
+        throw new Error('Invalid orders data received');
+      }
+
+      setOrders(ordersResponse.data.orders);
+      console.log("Orders set successfully:", ordersResponse.data.orders.length);
+
+    } catch (error) {
+      console.error("Error in fetchOrders:", error);
+      
+      if (error.response?.status === 401) {
+        await AsyncStorage.removeItem('token');
+        Alert.alert(
+          "Session Expired",
+          "Please login again",
+          [{ text: "OK", onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }]
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Error",
+        error.message || 'Failed to fetch orders',
+        [
+          { text: "Retry", onPress: fetchOrders },
+          { text: "Cancel", style: "cancel" }
+        ]
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  ]);
-
-  const handleAccept = (orderId) => {
-    console.log(`Order ${orderId} accepted`);
-    // Handle accept logic here
   };
 
-  const handleIgnore = (orderId) => {
-    console.log(`Order ${orderId} ignored`);
-    // Handle ignore logic here
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchOrders().finally(() => setRefreshing(false));
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const handleAccept = async (orderId) => {
+    if (!orderId || !deliveryManId) {
+      Alert.alert('Error', 'Invalid order or delivery man ID');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.post(
+        `${API_URL}/order/deliveryman/accept-order/${orderId}`,
+        {
+          delivery_instruction: 'test'
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Order accepted successfully');
+        fetchOrders(); // Refresh the orders list
+      } else {
+        throw new Error(response.data.message || 'Failed to accept order');
+      }
+    } catch (error) {
+      console.error('Error accepting order:', error);
+      
+      if (error.response?.status === 404) {
+        Alert.alert(
+          'Error',
+          'Unable to accept order. The order may have been taken by another delivery person.',
+          [{ text: 'OK' }]
+        );
+      } else if (error.response?.status === 401) {
+        Alert.alert(
+          'Session Expired',
+          'Please login again',
+          [{ text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }]
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          error.message || 'Failed to accept order. Please try again.',
+          [
+            { text: 'Retry', onPress: () => handleAccept(orderId) },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      }
+    }
   };
 
-  const OrderCard = ({ order }) => (
-    <View style={styles.orderCard}>
-      <View style={styles.orderHeader}>
-        <View style={styles.restaurantInfo}>
-          <View style={styles.logoContainer}>
-            <View style={styles.mcdonaldsLogo}>
-              <Text style={styles.logoText}>M</Text>
-            </View>
+  const handleIgnore = async (orderId) => {
+    if (!orderId || !deliveryManId) {
+      Alert.alert('Error', 'Invalid order or delivery man ID');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.post(
+        `${API_URL}/deliveryman/orders/${orderId}/ignore`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Order ignored successfully');
+        fetchOrders();
+      } else {
+        throw new Error(response.data.message || 'Failed to ignore order');
+      }
+    } catch (error) {
+      console.error('Error ignoring order:', error);
+      Alert.alert('Error', error.message || 'Failed to ignore order. Please try again.');
+    }
+  };
+
+  const OrderCard = ({ order }) => {
+    const isAssigned = order?.delivery_man !== null && order?.delivery_man !== undefined;
+    const isAssignedToMe = order?.delivery_man?._id === deliveryManId;
+    const orderStatus = order?.status || 'Processing';
+
+    const formatAddress = (address) => {
+      if (!address) return 'Delivery Address';
+      if (typeof address === 'string') return address;
+      
+      // Handle address object
+      const parts = [];
+      if (address.name) parts.push(address.name);
+      if (address.address) parts.push(address.address);
+      if (address.locality) parts.push(address.locality);
+      if (address.city) parts.push(address.city);
+      if (address.state) parts.push(address.state);
+      if (address.pincode) parts.push(address.pincode);
+      
+      return parts.join(', ');
+    };
+
+    return (
+      <TouchableOpacity 
+        style={[styles.card, { backgroundColor: '#ffffff' }]} 
+        onPress={() => navigation.navigate('OrderDetailsScreen', { 
+          orderId: order?._id,
+          restaurant: {
+            name: order?.cart?.[0]?.shopId?.name || 'Qauds',
+            cuisine: order?.cart?.[0]?.shopId?.cuisine || '',
+            phone: order?.cart?.[0]?.shopId?.phone || 'Phone',
+            address: order?.cart?.[0]?.shopId?.address || 'Address'
+          },
+          customer: {
+            name: order?.user?.name || 'Customer Name',
+            address: formatAddress(order?.shippingAddress),
+            phone: order?.user?.phone || 'Phone'
+          },
+          items: order?.cart?.map(item => ({
+            id: item?._id,
+            name: item?.name || 'Item Name',
+            price: `$${item?.price || 0}`,
+            quantity: item?.quantity || 0,
+            addons: item?.addons ? `Addons: ${item.addons.join(' + ')}` : '',
+            size: item?.size ? `Size: ${item.size}` : ''
+          })) || [],
+          totalItems: order?.cart?.length || 0,
+          paymentMethod: order?.paymentMethod || 'COD',
+          additionalNote: order?.note || ''
+        })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.orderIdContainer}>
+            <Text style={[styles.orderIdLabel, { color: '#374151' }]}>Order ID</Text>
+            <Text style={[styles.orderId, { color: '#374151' }]}>#{order?._id?.slice(-6) || 'N/A'}</Text>
           </View>
-          <View style={styles.restaurantDetails}>
-            <Text style={styles.restaurantName}>{order.restaurant}</Text>
-            <Text style={styles.cuisineType}>{order.cuisine}</Text>
+          <View style={[styles.paymentBadge, { 
+            backgroundColor: order?.paymentMethod === 'COD' ? '#FF6B6B' : '#4ECDC4' 
+          }]}>
+            <Text style={styles.paymentText}>{order?.paymentMethod || 'COD'}</Text>
           </View>
         </View>
-        <View style={[styles.tag, { backgroundColor: order.tagColor }]}>
-          <Text style={styles.tagText}>{order.tag}</Text>
-        </View>
-      </View>
-
-      <View style={styles.orderInfo}>
-        <Text style={styles.itemCount}>{order.items} Items</Text>
-        <Text style={styles.timeAgo}>{order.timeAgo}</Text>
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={styles.ignoreButton}
-          onPress={() => handleIgnore(order.id)}
-        >
-          <Text style={styles.ignoreButtonText}>Ignore</Text>
-        </TouchableOpacity>
         
-        <TouchableOpacity 
-          style={styles.acceptButton}
-          onPress={() => handleAccept(order.id)}
-        >
-          <Text style={styles.acceptButtonText}>Accept</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+        <View style={styles.cardContent}>
+          <View style={styles.infoRow}>
+            <View style={styles.iconContainer}>
+              <MaterialIcon name="store" size={18} color="#FF6B6B" />
+            </View>
+            <Text style={[styles.restaurantText, { color: '#374151' }]}>
+              {order?.cart?.[0]?.shopId?.name || 'Qauds'}
+            </Text>
+          </View>
+          
+          <View style={styles.infoRow}>
+            <View style={styles.iconContainer}>
+              <MaterialIcon name="location-on" size={18} color="#FF6B6B" />
+            </View>
+            <Text style={styles.addressText} numberOfLines={2}>
+              {formatAddress(order?.shippingAddress)}
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.cardActions}>
+          {isAssigned ? (
+            <View style={styles.assignedContainer}>
+              <Text style={styles.assignedText}>
+                {isAssignedToMe ? 'Assigned to you' : 'Assigned to another delivery man'}
+              </Text>
+              {isAssignedToMe && orderStatus === 'Out for delivery' && (
+                <TouchableOpacity 
+                  style={styles.trackButton}
+                  onPress={() => navigation.navigate('DeliveryTrackingScreen', { orderId: order?._id })}
+                >
+                  <Text style={styles.trackButtonText}>Track Delivery</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            orderStatus === 'Processing' && (
+              <>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.detailsBtn]}
+                  onPress={() => handleIgnore(order?._id)}
+                >
+                  <MaterialIcon name="close" size={18} color="#6B7280" />
+                  <Text style={styles.detailsBtnText}>Ignore</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.directionBtn]}
+                  onPress={() => handleAccept(order?._id)}
+                >
+                  <MaterialIcon name="check" size={18} color="#ffffff" />
+                  <Text style={styles.directionBtnText}>Accept</Text>
+                </TouchableOpacity>
+              </>
+            )
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -120,10 +344,22 @@ const OrderRequestScreen = () => {
       </View>
 
       {/* Order List */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {orders.map((order) => (
-          <OrderCard key={order.id} order={order} />
-        ))}
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {orders.length > 0 ? (
+          orders.map((order) => (
+            <OrderCard key={order._id} order={order} />
+          ))
+        ) : (
+          <View style={styles.noOrders}>
+            <Text style={styles.noOrdersText}>No orders available</Text>
+          </View>
+        )}
       </ScrollView>
 
       <BottomTab screen="ORDERS" />
@@ -148,10 +384,6 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  backArrow: {
-    fontSize: 18,
-    color: '#374151',
-  },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
@@ -167,133 +399,134 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
-  orderCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+  card: {
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  orderHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  restaurantInfo: {
-    flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-  },
-  logoContainer: {
-    marginRight: 12,
-  },
-  mcdonaldsLogo: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#DC2626',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  restaurantDetails: {
-    flex: 1,
-  },
-  restaurantName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 2,
-  },
-  cuisineType: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  tagText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  orderInfo: {
     marginBottom: 16,
   },
-  itemCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+  orderIdContainer: {
+    flex: 1,
+  },
+  orderIdLabel: {
+    fontSize: 12,
+    opacity: 0.6,
     marginBottom: 2,
   },
-  timeAgo: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '500',
+  orderId: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  buttonContainer: {
+  paymentBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  paymentText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cardContent: {
+    marginBottom: 20,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  restaurantText: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#6B7280',
+    flex: 1,
+    lineHeight: 20,
+  },
+  cardActions: {
     flexDirection: 'row',
     gap: 12,
   },
-  ignoreButton: {
+  actionBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-  },
-  ignoreButtonText: {
-    color: '#6B7280',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  acceptButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-  },
-  acceptButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  bottomNav: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  navItem: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
   },
-  activeNavItem: {
-    backgroundColor: '#10B981',
+  detailsBtn: {
+    backgroundColor: '#F3F4F6',
+  },
+  detailsBtnText: {
+    color: '#6B7280',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  directionBtn: {
+    backgroundColor: '#F16122',
+  },
+  directionBtnText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  assignedContainer: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: '#F3F4F6',
     borderRadius: 8,
+    alignItems: 'center',
   },
-  navIcon: {
-    fontSize: 20,
+  assignedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  trackButton: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#3B82F6',
+    borderRadius: 6,
+  },
+  trackButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  noOrders: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noOrdersText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

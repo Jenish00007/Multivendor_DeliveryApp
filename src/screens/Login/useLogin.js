@@ -70,42 +70,82 @@ export const useLogin = () => {
         }
       }
 
-      const response = await fetch(`${API_URL}/user/login-user`, {
+      const response = await fetch(`${API_URL}/deliveryman/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           email: input,
           password: password
         })
-      })
+      }).catch(error => {
+        console.error('Network error:', error);
+        throw new Error('Unable to connect to server. Please check your internet connection.');
+      });
 
-      const data = await response.json()
+      if (!response) {
+        throw new Error('No response from server');
+      }
+
+      const data = await response.json().catch(error => {
+        console.error('JSON parse error:', error);
+        throw new Error('Invalid response from server');
+      });
+      
       if (!response.ok) {
-        if (response.status === 401 || data.message === 'Unauthenticated') {
-          await logout()
-          throw new Error('Session expired. Please login again.')
+        if (response.status === 401) {
+          throw new Error('Invalid email or password');
         }
-        throw new Error(data.message || 'Login failed')
+        throw new Error(data.message || 'Login failed');
       }
 
       if (data.token) {
-        await setTokenAsync(data.token)
+        console.log("Login successful, storing token...");
+        
+        // Store delivery man specific data
+        await AsyncStorage.setItem('userType', 'deliveryman');
+        
+        // Make sure we have valid deliveryman data before storing
+        if (data.deliveryMan) {
+          await AsyncStorage.setItem('deliverymanData', JSON.stringify(data.deliveryMan));
+        } else if (data.user) {
+          // Some APIs might return user instead of deliveryman
+          await AsyncStorage.setItem('deliverymanData', JSON.stringify(data.user));
+        } else {
+          console.warn('No deliveryman data received from server');
+        }
+        
+        // Store token without Bearer prefix
+        const token = data.token.startsWith('Bearer ') ? data.token.substring(7) : data.token;
+        console.log("Storing token:", token.substring(0, 10) + "...");
+        await AsyncStorage.setItem('token', token);
+        await setTokenAsync(token);
+        
+        // Check if delivery man is approved
+        const deliverymanData = data.deliveryMan || data.user;
+        if (deliverymanData && !deliverymanData.isApproved) {
+          FlashMessage({
+            message: 'Your account is pending approval. Please wait for admin approval.'
+          });
+          return;
+        }
+
         navigation.navigate({
-          name: 'Menu',
+          name: 'DeliveryHome',
           merge: true
-        })
+        });
       } else {
-        throw new Error('Invalid response from server')
+        throw new Error('Invalid response from server');
       }
     } catch (error) {
       console.error('Login error:', error);
       FlashMessage({
-        message: error.message || t('errorWhileLogging')
-      })
+        message: error.message || 'An error occurred during login. Please try again.'
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 

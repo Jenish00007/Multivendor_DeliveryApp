@@ -85,7 +85,7 @@ function Login(props) {
                     ...alignment.MTlarge,
                     ...alignment.MBmedium
                   }}>
-                  Login
+                  Delivery Partner Login
                 </TextDefault>
               </View>
               <View style={styles().form}>
@@ -154,11 +154,17 @@ function Login(props) {
                 </View>
                 <View style={[styles.termsContainer, { alignItems: 'center', justifyContent: 'center' }]}>
                   <TextDefault textColor="black" style={{ textAlign: 'center' }}>
-                    * I Agree with all the{' '}
+                    * By logging in, you agree to our{' '}
                     <TextDefault
                       textColor="#E5E500"
                       onPress={() => {/* Navigate to Terms */ }}>
                       Terms & Conditions
+                    </TextDefault>
+                    {' '}and{' '}
+                    <TextDefault
+                      textColor="#E5E500"
+                      onPress={() => {/* Navigate to Privacy Policy */ }}>
+                      Privacy Policy
                     </TextDefault>
                   </TextDefault>
                 </View>
@@ -188,10 +194,10 @@ function Login(props) {
                 {/* Sign Up Option */}
                 <View style={[styles.signupContainer, { alignItems: 'center', justifyContent: 'center' }]}>
                   <TextDefault textColor="black" style={{ textAlign: 'center' }}>
-                    Don't have an account?{' '}
+                    Want to become a delivery partner?{' '}
                     <TouchableOpacity onPress={() => props.navigation.navigate('Register')}>
                       <TextDefault textColor="#E5E500">
-                        Sign Up
+                        Register Now
                       </TextDefault>
                     </TouchableOpacity>
                   </TextDefault>
