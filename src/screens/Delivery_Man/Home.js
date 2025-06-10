@@ -165,7 +165,7 @@ const DeliveryHome = () => {
                         </View>
                         
                         {/* Online Status Card */}
-                        <View style={[styles.statusCard, { 
+                        {/* <View style={[styles.statusCard, { 
                             backgroundColor: isOnline ? '#F16122' : '#6B7280',
                             borderColor: isOnline ? '#34D399' : '#9CA3AF'
                         }]}>
@@ -184,7 +184,7 @@ const DeliveryHome = () => {
                                 value={isOnline}
                                 style={styles.switch}
                             />
-                        </View>
+                        </View> */}
                     </View>
 
                     <ScrollView 
@@ -196,7 +196,7 @@ const DeliveryHome = () => {
                         showsVerticalScrollIndicator={false}
                     >
                         {/* Enhanced Earnings Card */}
-                        <View style={styles.earningsCard}>
+                        {/* <View style={styles.earningsCard}>
                             <View style={styles.earningsHeader}>
                                 <View style={styles.earningsIconContainer}>
                                     <DeliveryIcon width={28} height={28} />
@@ -226,7 +226,7 @@ const DeliveryHome = () => {
                                     <Text style={styles.earningsLabel}>This Month</Text>
                                 </View>
                             </View>
-                        </View>
+                        </View> */}
 
                        
                         {/* Enhanced Stats Grid */}

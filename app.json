@@ -4,8 +4,8 @@
     "scheme": "qauds",
     "version": "1.0.0",
     "description": "Ordering app built in React Native using Expo for IOS and Android.",
-    "slug": "qauds",
-    "owner": "jenish67",
+    "slug": "figgo",
+    "owner": "fenix_ts",
     "privacy": "public",
     "androidStatusBar": {
       "backgroundColor": "#000000"
@@ -83,7 +83,7 @@
       [
         "expo-updates",
         {
-          "username": "zeenathshameena"
+          "username": "fenix_ts"
         }
       ],
       [
@@ -101,7 +101,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "06c00e46-fba8-45e5-848c-c3e3ba1ddfe8"
+        "projectId": "7fbd99a4-d16c-4097-a64a-bb314d514f76"
       }
     }
   }

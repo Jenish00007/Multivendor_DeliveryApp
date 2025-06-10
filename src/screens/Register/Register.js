@@ -20,7 +20,6 @@ import { FontAwesome } from '@expo/vector-icons'
 import useRegister from './useRegister'
 import { useTranslation } from 'react-i18next'
 import FlashMessage, { showMessage } from 'react-native-flash-message'
-import * as ImagePicker from 'expo-image-picker'
 import Icon from 'react-native-vector-icons/Ionicons'
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons'
 import { API_URL } from '../../config/api'
@@ -54,48 +53,12 @@ function Register(props) {
     setVehicleNumber,
     licenseNumber,
     setLicenseNumber,
-    idProof,
-    setIdProof,
     loading,
     setLoading
   } = useRegister()
 
   const { t } = useTranslation()
   const navigation = useNavigation()
-
-  const pickImage = async () => {
-    try {
-      // Request permission
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        showMessage({
-          message: "Sorry, we need camera roll permissions to upload ID proof!",
-          type: "danger"
-        });
-        return;
-      }
-
-      // Launch image picker with correct mediaTypes configuration
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setIdProof(result.assets[0]);
-        console.log("Image selected:", result.assets[0]);
-      }
-    } catch (error) {
-      console.error("Error picking image:", error);
-      showMessage({
-        message: "Error selecting image. Please try again.",
-        type: "danger"
-      });
-    }
-  };
 
   const handleRegister = async () => {
     try {
@@ -117,24 +80,6 @@ function Register(props) {
       formData.append('vehicleType', vehicleType)
       formData.append('vehicleNumber', vehicleNumber)
       formData.append('licenseNumber', licenseNumber)
-
-      // Add ID proof if selected
-      if (idProof) {
-        console.log("Adding ID proof to form data")
-        formData.append('idProof', {
-          uri: Platform.OS === 'ios' ? idProof.uri.replace('file://', '') : idProof.uri,
-          type: 'image/jpeg',
-          name: 'id_proof.jpg'
-        })
-      } else {
-        console.log("No ID proof selected")
-        showMessage({
-          message: "Please select an ID proof document",
-          type: "danger"
-        })
-        setLoading(false)
-        return
-      }
 
       console.log("Sending registration request...")
       const response = await fetch(`${API_URL}/deliveryman/register`, {
@@ -168,7 +113,6 @@ function Register(props) {
         setVehicleType('')
         setVehicleNumber('')
         setLicenseNumber('')
-        setIdProof(null)
         
         // Navigate to login
         navigation.reset({
@@ -194,14 +138,6 @@ function Register(props) {
     if (!name || !email || !password || !phoneNumber || !address || !vehicleType || !vehicleNumber || !licenseNumber) {
       showMessage({
         message: "Please fill in all fields",
-        type: "danger"
-      })
-      return false
-    }
-
-    if (!idProof) {
-      showMessage({
-        message: "Please select an ID proof document",
         type: "danger"
       })
       return false
@@ -411,25 +347,6 @@ function Register(props) {
                     onChangeText={setLicenseNumber}
                   />
                 </View>
-
-                {/* ID Proof Upload */}
-                <TouchableOpacity
-                  style={styles(currentTheme).uploadButton}
-                  onPress={pickImage}
-                >
-                  <TextDefault H5 textColor={currentTheme.black}>
-                    {idProof ? 'Change ID Proof' : 'Upload ID Proof'}
-                  </TextDefault>
-                </TouchableOpacity>
-
-                {idProof && (
-                  <View style={styles().imagePreview}>
-                    <Image
-                      source={{ uri: idProof.uri }}
-                      style={styles().previewImage}
-                    />
-                  </View>
-                )}
               </View>
             </View>
 
