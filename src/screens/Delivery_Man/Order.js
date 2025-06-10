@@ -9,7 +9,8 @@ import {
   SafeAreaView,
   StatusBar,
   RefreshControl,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
@@ -184,26 +185,48 @@ const OrderRequestScreen = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.post(
-        `${API_URL}/deliveryman/orders/${orderId}/ignore`,
+      const response = await axios.put(
+        `${API_URL}/order/deliveryman/ignore-order/${orderId}`,
         {},
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
           }
         }
       );
 
       if (response.data.success) {
         Alert.alert('Success', 'Order ignored successfully');
-        fetchOrders();
+        // Remove the ignored order from the list
+        setOrders(prevOrders => prevOrders.filter(order => order._id !== orderId));
       } else {
         throw new Error(response.data.message || 'Failed to ignore order');
       }
     } catch (error) {
       console.error('Error ignoring order:', error);
-      Alert.alert('Error', error.message || 'Failed to ignore order. Please try again.');
+      
+      if (error.response?.status === 404) {
+        Alert.alert('Error', 'Order not found');
+      } else if (error.response?.status === 400) {
+        Alert.alert('Error', error.response.data.message || 'Cannot ignore this order');
+      } else if (error.response?.status === 401) {
+        Alert.alert(
+          'Session Expired',
+          'Please login again',
+          [{ text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }]
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          error.message || 'Failed to ignore order. Please try again.',
+          [
+            { text: 'Retry', onPress: () => handleIgnore(orderId) },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      }
     }
   };
 
@@ -336,7 +359,7 @@ const OrderRequestScreen = () => {
       
       {/* Header */}
       <View style={styles.header}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="#111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Order Request</Text>
@@ -351,13 +374,22 @@ const OrderRequestScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {orders.length > 0 ? (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#F16122" />
+            <Text style={styles.loadingText}>Loading orders...</Text>
+          </View>
+        ) : orders.length > 0 ? (
           orders.map((order) => (
             <OrderCard key={order._id} order={order} />
           ))
         ) : (
           <View style={styles.noOrders}>
+            <MaterialIcon name="delivery-dining" size={64} color="#D1D5DB" />
             <Text style={styles.noOrdersText}>No orders available</Text>
+            <Text style={styles.noOrdersSubText}>
+              New orders will appear here when available
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -518,15 +550,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  noOrders: {
-    padding: 20,
-    alignItems: 'center',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  noOrders: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
   },
   noOrdersText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+  },
+  noOrdersSubText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 8,
     textAlign: 'center',
+    paddingHorizontal: 32,
   },
 });
 
