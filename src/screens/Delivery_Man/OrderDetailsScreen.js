@@ -189,10 +189,15 @@ const OrderDetailsScreen = ({ route, navigation }) => {
     );
   }
 
-  const orderStatus = getOrderStatus(orderDetails.status);
-  console.log("OrderDetails in render:", orderDetails);
-  console.log("OrderDetails.items in render:", orderDetails?.items);
-  const totalAmount = orderDetails.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+  const orderStatus = getOrderStatus(orderDetails?.status);
+
+  // Debugging logs for orderDetails and items before totalAmount calculation
+  console.log("Debugging: orderDetails before totalAmount:", orderDetails);
+  console.log("Debugging: orderDetails.items before totalAmount:", orderDetails?.items);
+
+  const totalAmount = (orderDetails?.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  console.log("Debugging: Calculated totalAmount:", totalAmount);
 
   return (
     <SafeAreaView style={styles.container}>

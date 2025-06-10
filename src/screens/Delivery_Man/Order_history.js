@@ -52,20 +52,21 @@ const OrderHistoryScreen = () => {
 
       // Transform the data to match our display format
       const transformedOrders = (data.orders || []).map(order => ({
-        id: order._id,
-        order_number: order.order_number || order._id,
-        order_items_count: order.cart.reduce((total, item) => total + item.quantity, 0),
-        created_at: new Date(order.createdAt).toLocaleString(),
+        id: order.id,
+        order_number: order.order_number,
+        order_items_count: order.order_items_count,
+        created_at: order.created_at,
         status: order.status,
-        payment_method: order.payment_method,
-        total_amount: order.total_amount,
-        delivery_address: order.delivery_address,
-        restaurant_name: order.restaurant?.name || 'Store',
+        payment_method: order.payment_type,
+        total_amount: order.total_price,
+        delivery_address: order.customer?.address,
+        restaurant_name: order.store?.name || 'Store',
       }));
 
       console.log("Frontend Transformed Orders:", transformedOrders);
 
       setOrderHistory(transformedOrders);
+      console.log("Order History state after set:", orderHistory);
       setError(null);
     } catch (err) {
       setError(err.message);
