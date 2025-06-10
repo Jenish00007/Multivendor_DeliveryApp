@@ -125,7 +125,7 @@ const OrderRequestScreen = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.post(
+      const response = await axios.put(
         `${API_URL}/order/deliveryman/accept-order/${orderId}`,
         {
           delivery_instruction: 'test'
