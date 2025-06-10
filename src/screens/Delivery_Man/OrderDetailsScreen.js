@@ -14,6 +14,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,6 +28,9 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [orderDetails, setOrderDetails] = useState(null);
   const [additionalNote, setAdditionalNote] = useState('');
+  const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const fetchOrderDetails = async () => {
     try {
@@ -86,20 +90,50 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   };
 
   const handleSwipeConfirmation = () => {
-    Alert.alert(
-      'Confirm Order',
-      'Are you sure you want to confirm this order?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Confirm', 
-          onPress: () => {
-            console.log('Order confirmed:', orderId);
-            // Add your confirmation logic here
+    setIsOtpModalVisible(true);
+  };
+
+  const confirmDeliveryWithOtp = async () => {
+    if (enteredOtp.length !== 6) {
+      Alert.alert('Error', 'Please enter a 6-digit OTP');
+      return;
+    }
+
+    setIsConfirming(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.put(
+        `${API_URL}/order/deliveryman/confirm-delivery/${orderId}`,
+        {
+          otp: enteredOtp,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
           }
         }
-      ]
-    );
+      );
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Order delivered successfully!');
+        setIsOtpModalVisible(false);
+        setEnteredOtp('');
+        navigation.replace('OrderHistoryScreen');
+      } else {
+        throw new Error(response.data.message || 'Failed to confirm delivery');
+      }
+    } catch (error) {
+      console.error('Error confirming delivery with OTP:', error);
+      Alert.alert('Error', error.message || 'Failed to confirm delivery. Please try again.');
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   const getOrderStatus = (status) => {
@@ -189,7 +223,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Items:</Text>
-              <Text style={styles.summaryValue}>{orderDetails?.items?.length || 0}</Text>
+              <Text style={styles.summaryValue}>{(orderDetails?.items?.length || 0)}</Text>
             </View>
           </View>
         </View>
@@ -355,14 +389,60 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           activeOpacity={0.8}
         >
           <View style={styles.confirmContent}>
-            <Icon name="checkmark-circle" size={24} color="#FFFFFF" />
+            {isConfirming ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Icon name="checkmark-circle" size={24} color="#FFFFFF" />
+            )}
             <Text style={styles.confirmText}>Confirm Order Delivery</Text>
-            <Icon name="arrow-forward" size={20} color="#FFFFFF" />
+            {!isConfirming && <Icon name="arrow-forward" size={20} color="#FFFFFF" />}
           </View>
         </TouchableOpacity>
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* OTP Input Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isOtpModalVisible}
+        onRequestClose={() => setIsOtpModalVisible(false)}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>Enter OTP</Text>
+            <TextInput
+              style={styles.otpInput}
+              keyboardType="numeric"
+              maxLength={6}
+              value={enteredOtp}
+              onChangeText={setEnteredOtp}
+              placeholder="_ _ _ _ _ _"
+              placeholderTextColor="#9CA3AF"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setIsOtpModalVisible(false)}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmOtpButton]}
+                onPress={confirmDeliveryWithOtp}
+                disabled={isConfirming}
+              >
+                {isConfirming ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Confirm</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <BottomTab screen="ORDERS" />
     </SafeAreaView>
@@ -744,6 +824,73 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    marginBottom: 20,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  otpInput: {
+    width: 150,
+    height: 50,
+    borderColor: '#D1D5DB',
+    borderWidth: 2,
+    borderRadius: 10,
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    letterSpacing: 8,
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    borderRadius: 10,
+    padding: 12,
+    elevation: 2,
+    flex: 1,
+    marginHorizontal: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#EF4444',
+  },
+  confirmOtpButton: {
+    backgroundColor: '#F16122',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 16,
   },
 });
 

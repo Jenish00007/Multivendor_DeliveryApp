@@ -44,6 +44,7 @@ const OrderHistoryScreen = () => {
       });
 
       const data = await response.json();
+      console.log("Backend Raw Orders Data:", data.orders);
       
       if (!response.ok) {
         throw new Error(data.message || 'Failed to fetch order history');
@@ -53,14 +54,16 @@ const OrderHistoryScreen = () => {
       const transformedOrders = (data.orders || []).map(order => ({
         id: order._id,
         order_number: order.order_number || order._id,
-        order_items_count: order.items?.length || 0,
-        created_at: new Date(order.created_at).toLocaleString(),
+        order_items_count: order.cart.reduce((total, item) => total + item.quantity, 0),
+        created_at: new Date(order.createdAt).toLocaleString(),
         status: order.status,
         payment_method: order.payment_method,
         total_amount: order.total_amount,
         delivery_address: order.delivery_address,
         restaurant_name: order.restaurant?.name || 'Store',
       }));
+
+      console.log("Frontend Transformed Orders:", transformedOrders);
 
       setOrderHistory(transformedOrders);
       setError(null);
