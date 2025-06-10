@@ -48,7 +48,10 @@ const OrderDetailsScreen = ({ route, navigation }) => {
       });
 
       if (response.data.success) {
-        setOrderDetails(response.data.order);
+        setOrderDetails({ 
+          ...response.data.order,
+          items: response.data.order.items || []
+        });
         setAdditionalNote(response.data.order.delivery_instruction || '');
       } else {
         throw new Error(response.data.message || 'Failed to fetch order details');
@@ -143,6 +146,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
       preparing: { color: '#3B82F6', text: 'Preparing' },
       ready: { color: '#8B5CF6', text: 'Ready' },
       picked_up: { color: '#EF4444', text: 'Picked Up' },
+      shipping: { color: '#F59E0B', text: 'Shipping' },
+      out_for_delivery: { color: '#FFD700', text: 'Out for delivery' },
       delivered: { color: '#059669', text: 'Delivered' },
       cancelled: { color: '#6B7280', text: 'Cancelled' },
     };
@@ -185,6 +190,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   }
 
   const orderStatus = getOrderStatus(orderDetails.status);
+  console.log("OrderDetails in render:", orderDetails);
+  console.log("OrderDetails.items in render:", orderDetails?.items);
   const totalAmount = orderDetails.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
 
   return (
@@ -326,10 +333,10 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         {/* Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            <Icon name="restaurant" size={16} color="#6B7280" /> Order Items ({orderDetails?.items?.length || 0})
+            <Icon name="restaurant" size={16} color="#6B7280" /> Order Items ({(orderDetails?.items || []).length || 0})
           </Text>
 
-          {orderDetails?.items?.map((item, index) => (
+          {(orderDetails?.items || []).map((item, index) => (
             <View key={item._id || index} style={styles.itemCard}>
               <View style={styles.itemImageContainer}>
                 {item.image ? (
