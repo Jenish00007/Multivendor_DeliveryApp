@@ -60,7 +60,23 @@ const DeliveryHome = () => {
     };
 
     const handleOrderPress = (order) => {
-        navigation.navigate('OrderDetailsScreen', { order });
+        navigation.navigate('OrderDetailsScreen', {
+            orderId: order._id,
+            restaurant: {
+                name: order.restaurant?.name || 'Restaurant Name',
+                address: order.restaurant?.address || 'Restaurant Address',
+                phone: order.restaurant?.phone || 'Restaurant Phone'
+            },
+            customer: {
+                name: order.customer?.name || 'Customer Name',
+                address: order.deliveryAddress,
+                phone: order.customer?.phone || 'Customer Phone'
+            },
+            items: order.items || [],
+            totalItems: order.items?.length || 0,
+            paymentMethod: order.paymentMethod || 'COD',
+            additionalNote: order.note || ''
+        });
     };
 
     const OrderCard = ({ order }) => (
