@@ -270,7 +270,7 @@ const OrderRequestScreen = () => {
           items: order?.cart?.map(item => ({
             id: item?._id,
             name: item?.name || 'Item Name',
-            price: `$${item?.price || 0}`,
+            price: `₹${item?.price || 0}`,
             quantity: item?.quantity || 0,
             addons: item?.addons ? `Addons: ${item.addons.join(' + ')}` : '',
             size: item?.size ? `Size: ${item.size}` : ''
