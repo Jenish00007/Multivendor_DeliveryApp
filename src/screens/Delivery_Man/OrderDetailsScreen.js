@@ -15,11 +15,14 @@ import {
   ActivityIndicator,
   Dimensions,
   Modal,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
 import axios from 'axios';
+import Geolocation from '@react-native-community/geolocation';
 
 const { width } = Dimensions.get('window');
 
@@ -83,12 +86,66 @@ const OrderDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleDirection = (type, address) => {
-    if (address) {
-      const encodedAddress = encodeURIComponent(address);
-      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`);
-    } else {
-      Alert.alert('No Address', 'Address not available');
+  const handleDirection = async (type, address) => {
+    try {
+      // Request location permission for Android
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: "Location Permission",
+            message: "This app needs access to your location to show directions.",
+            buttonNeutral: "Ask Me Later",
+            buttonNegative: "Cancel",
+            buttonPositive: "OK"
+          }
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert('Permission Denied', 'Location permission is required to show directions.');
+          return;
+        }
+      }
+
+      // Get current location
+      Geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude: currentLat, longitude: currentLng } = position.coords;
+          
+          // Get destination coordinates based on type
+          let destLat, destLng;
+          
+          if (type === 'customer') {
+            destLat = orderDetails?.shippingAddress?.latitude;
+            destLng = orderDetails?.shippingAddress?.longitude;
+          } else if (type === 'restaurant') {
+            destLat = orderDetails?.store?.latitude;
+            destLng = orderDetails?.store?.longitude;
+          }
+
+          if (!destLat || !destLng) {
+            Alert.alert('Error', 'Destination coordinates not available');
+            return;
+          }
+
+          // Open Google Maps with directions
+          const url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${destLat},${destLng}&travelmode=driving`;
+          const canOpen = await Linking.canOpenURL(url);
+          
+          if (canOpen) {
+            await Linking.openURL(url);
+          } else {
+            Alert.alert('Error', 'Could not open Google Maps');
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          Alert.alert('Error', 'Could not get your current location');
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      );
+    } catch (error) {
+      console.error('Error in handleDirection:', error);
+      Alert.alert('Error', 'Failed to open directions');
     }
   };
 
