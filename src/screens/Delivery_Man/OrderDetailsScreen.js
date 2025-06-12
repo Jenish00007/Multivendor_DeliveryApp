@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BottomTab from '../../components/BottomTab/BottomTab';
+import Geolocation from '@react-native-geolocation/geolocation';
 import {
   View,
   Text,
@@ -22,7 +23,6 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
 import axios from 'axios';
-import Geolocation from '@react-native-community/geolocation';
 
 const { width } = Dimensions.get('window');
 
