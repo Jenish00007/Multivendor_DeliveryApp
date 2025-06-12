@@ -212,7 +212,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   };
 
   const formatPrice = (price) => {
-    return `$${parseFloat(price).toFixed(2)}`;
+    return `₹${parseFloat(price).toFixed(2)}`;
   };
 
   if (loading) {

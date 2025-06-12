@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Qauds",
+    "name": "Qauds Partner",
     "scheme": "qauds",
     "version": "1.0.0",
     "description": "Ordering app built in React Native using Expo for IOS and Android.",

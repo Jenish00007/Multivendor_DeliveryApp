@@ -20,7 +20,7 @@ const DeliveryTrackingScreen = () => {
     transactionNo: "324U12U124",
     deliveryPin: "2235",
     deliveryType: "Cash on Delivery",
-    amount: "600 BDT",
+    amount: "₹600",
     pickupAddress: "Taman Rumpun Bahagia 75300, Melaka",
     deliveryAddress: "2972 Westheimer Rd. Santa Ana, Illinois 85486",
     customer: {

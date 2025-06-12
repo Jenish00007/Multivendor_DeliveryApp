@@ -9,33 +9,24 @@ import * as Notifications from 'expo-notifications'
 import OrderRequestScreen from '../screens/Delivery_Man/Order'
 import OrderDetailsScreen from '../screens/Delivery_Man/OrderDetailsScreen'
 import DeliveryTrackingScreen from '../screens/Delivery_Man/DeliveryTrackingScreen'
-// import Login from '../screens/Login/Login'
 import Login from '../screens/Login/Login'
 import Register from '../screens/Register/Register'
 import ForgotPassword from '../screens/ForgotPassword/ForgotPassword'
 import SetYourPassword from '../screens/ForgotPassword/SetYourPassword'
-// import CreateAccount from '../screens/CreateAccount/CreateAccount'
 import CreateAccount from '../screens/CreateAccount/CreateAccount'
 import SideBar from '../components/Sidebar/Sidebar'
 import ItemDetail from '../screens/ItemDetail/ItemDetail'
-import MyOrders from '../screens/MyOrders/MyOrders'
 import Cart from '../screens/Cart/Cart'
 import SaveAddress from '../screens/SaveAddress/SaveAddress'
 import RateAndReview from '../screens/RateAndReview/RateAndReview'
-import Payment from '../screens/Payment/Payment'
 import Help from '../screens/Help/Help'
-import StripeCheckout from '../screens/Stripe/StripeCheckout'
 import Profile from '../screens/Profile/Profile'
 import Addresses from '../screens/Addresses/Addresses'
 import NewAddress from '../screens/NewAddress/NewAddress'
 import EditAddress from '../screens/EditAddress/EditAddress'
-import CartAddress from '../screens/CartAddress/CartAddress'
 import FullMap from '../screens/FullMap/FullMap'
-import OrderDetail from '../screens/OrderDetail/OrderDetail'
 import Settings from '../screens/Settings/Settings'
 import HelpBrowser from '../screens/HelpBrowser/HelpBrowser'
-import Main from '../screens/Main/Main'
-import Restaurant from '../screens/Restaurant/Restaurant'
 import About from '../screens/About/About'
 import SelectLocation from '../screens/SelectLocation'
 import AddNewAddress from '../screens/SelectLocation/AddNewAddress'
@@ -44,29 +35,17 @@ import ThemeContext from '../ui/ThemeContext/ThemeContext'
 import { theme } from '../utils/themeColors'
 import screenOptions from './screenOptions'
 import { LocationContext } from '../context/Location'
-
-import Favourite from '../screens/Favourite/Favourite'
-
-import { DarkBackButton } from '../components/Header/HeaderIcons/HeaderIcons'
 import EmailOtp from '../screens/Otp/Email/EmailOtp'
-import SubCategory from '../screens/SubCategory/SubCategory'
 import PhoneOtp from '../screens/Otp/Phone/PhoneOtp'
 import ForgotPasswordOtp from '../screens/Otp/ForgotPassword/ForgetPasswordOtp'
 import PhoneNumber from '../screens/PhoneNumber/PhoneNumber'
 import { useApolloClient, gql } from '@apollo/client'
 import { myOrders } from '../apollo/queries'
-import Checkout from '../screens/Checkout/Checkout'
 import Menu from '../screens/Menu/Menu'
 import useEnvVars from '../../environment'
 import * as Sentry from '@sentry/react-native'
-import SearchModal from '../components/Address/SearchModal'
-import { Searchbar } from 'react-native-paper'
-import SearchPage from '../screens/Searchbar/Searchbar'
 import Notification from '../screens/Notification/Notification'
-import ProductDetails from '../screens/ProductDetail/ProductDetails'
 import Options from '../screens/Options/Options'
-import OrderSummary from '../screens/OrderSummary/OrderSummary'
-import OrderConfirmation from '../screens/OrderConfirmation/Orderconfirmation'
 import TermsAndConditions from '../screens/Policies/TermsAndConditions'
 import PrivacyPolicy from '../screens/Policies/PrivacyPolicy'
 import RefundPolicy from '../screens/Policies/RefundPolicy'
@@ -110,38 +89,14 @@ function NoDrawer() {
       })}
     >
    
-      <NavigationStack.Screen  options={{ headerShown: false, headerTitle: 'Delivery Man App' }} name='Menu' component={Home} />
-      <NavigationStack.Screen
-        name='Restaurant'
-        component={Restaurant}
-        options={{ header: () => null }}
-      />
+      <NavigationStack.Screen    options={{ header: () => null }} name='Menu' component={Home} />
       {<NavigationStack.Screen name='ItemDetail' component={ItemDetail} />}
       <NavigationStack.Screen name='Cart' component={Cart} />
-      <NavigationStack.Screen name='Checkout' component={Checkout} />
       <NavigationStack.Screen name='Options' component={Profile} />
-      <NavigationStack.Screen name='SearchPage' component={SearchPage} />
       <NavigationStack.Screen name='Addresses' component={Addresses} />
       <NavigationStack.Screen name='NewAddress' component={NewAddress} />
       <NavigationStack.Screen name='EditAddress' component={EditAddress} />
       <NavigationStack.Screen name='FullMap' component={FullMap} />
-      <NavigationStack.Screen name='CartAddress' component={CartAddress} />
-      <NavigationStack.Screen name='SubCategory' component={SubCategory} />
-      <NavigationStack.Screen name='Payment' component={Payment} />
-      <NavigationStack.Screen
-        name='OrderDetail'
-        component={OrderDetail}
-        options={{
-          // headerTransparent: true,
-          // headerRight: null,
-          // title: '',
-          headerBackImage: () =>
-            DarkBackButton({
-              iconColor: currentTheme.backIcon,
-              iconBackground: currentTheme.backIconBackground
-            })
-        }}
-      />
       <NavigationStack.Screen name='Settings' component={Settings} />
       <NavigationStack.Screen options={{ headerShown: false }} name='MyOrders' component={OrderRequestScreen} />
    
@@ -152,14 +107,7 @@ function NoDrawer() {
         component={About}
         options={{ header: () => null }}
       />
-     
       <NavigationStack.Screen name='RateAndReview' component={RateAndReview} />
-
-      <NavigationStack.Screen
-        name='StripeCheckout'
-        component={StripeCheckout}
-      />
-
       {/* Authentication Login */}
       <NavigationStack.Screen name='CreateAccount' component={CreateAccount} />
       <NavigationStack.Screen name='Login' component={Login} />
@@ -185,19 +133,14 @@ function NoDrawer() {
       />
       <NavigationStack.Screen name='AddNewAddress' component={AddNewAddress} />
       <NavigationStack.Screen name='SaveAddress' component={SaveAddress} />
-      <NavigationStack.Screen name='Favourite' component={Favourite} />
       <NavigationStack.Screen options={{ headerShown: false }} name='OrderHistoryScreen' component={OrderHistoryScreen}/>
       
       <NavigationStack.Screen name='DeliveryTrackingScreen' component={DeliveryTrackingScreen}/>
       <NavigationStack.Screen name='DeliveryHome' component={DeliveryHome}/>
     
       <NavigationStack.Screen name='Notification' component={Notification}/>
-      <NavigationStack.Screen name='ProductDetail' component={ProductDetails}/>
       <NavigationStack.Screen name='Profile' component={Options}/>
-      <NavigationStack.Screen name='OrderSummary' component={OrderSummary}/>
       <NavigationStack.Screen options={{ headerShown: false }} name='OrderDetailsScreen' component={OrderDetailsScreen}/>
-      <NavigationStack.Screen name='OrderConfirmation' component={OrderConfirmation}/>
-
       {/* Policy Screens */}
       <NavigationStack.Screen name='TermsAndConditions' component={TermsAndConditions} />
       <NavigationStack.Screen name='PrivacyPolicy' component={PrivacyPolicy} />
