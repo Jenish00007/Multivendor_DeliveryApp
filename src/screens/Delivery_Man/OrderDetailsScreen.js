@@ -127,15 +127,14 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             return;
           }
 
-          // Open Google Maps with directions
-          const url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${destLat},${destLng}&travelmode=driving`;
-          const canOpen = await Linking.canOpenURL(url);
-          
-          if (canOpen) {
-            await Linking.openURL(url);
-          } else {
-            Alert.alert('Error', 'Could not open Google Maps');
-          }
+          // Navigate to in-app map component
+          navigation.navigate('MapScreen', { 
+            originLat: currentLat,
+            originLng: currentLng,
+            destinationLat: destLat,
+            destinationLng: destLng,
+            destinationName: type === 'customer' ? orderDetails?.shippingAddress?.address : orderDetails?.store?.name
+          });
         },
         (error) => {
           console.error('Error getting location:', error);

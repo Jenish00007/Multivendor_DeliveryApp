@@ -164,7 +164,7 @@ export default function App() {
     saveLocation()
   }, [location]) 
 
-  useEffect(() => {
+  useEffect(() => { 
     requestTrackingPermissions()
   }, [])
 

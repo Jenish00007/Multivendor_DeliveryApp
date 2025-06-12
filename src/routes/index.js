@@ -30,6 +30,7 @@ import About from '../screens/About/About'
 import SelectLocation from '../screens/SelectLocation'
 import AddNewAddress from '../screens/SelectLocation/AddNewAddress'
 import CurrentLocation from '../screens/CurrentLocation'
+import MapScreen from '../screens/MapScreen'
 import ThemeContext from '../ui/ThemeContext/ThemeContext'
 import { theme } from '../utils/themeColors'
 import screenOptions from './screenOptions'
@@ -100,6 +101,7 @@ function NoDrawer() {
    
       <NavigationStack.Screen name='Help' component={Help} />
       <NavigationStack.Screen name='HelpBrowser' component={HelpBrowser} />
+      <NavigationStack.Screen name='MapScreen' component={MapScreen} />
       <NavigationStack.Screen
         name='About'
         component={About}
