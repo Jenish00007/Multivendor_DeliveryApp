@@ -16,7 +16,6 @@ import SetYourPassword from '../screens/ForgotPassword/SetYourPassword'
 import CreateAccount from '../screens/CreateAccount/CreateAccount'
 import SideBar from '../components/Sidebar/Sidebar'
 import ItemDetail from '../screens/ItemDetail/ItemDetail'
-import Cart from '../screens/Cart/Cart'
 import SaveAddress from '../screens/SaveAddress/SaveAddress'
 import RateAndReview from '../screens/RateAndReview/RateAndReview'
 import Help from '../screens/Help/Help'
@@ -91,7 +90,6 @@ function NoDrawer() {
    
       <NavigationStack.Screen    options={{ header: () => null }} name='Menu' component={Home} />
       {<NavigationStack.Screen name='ItemDetail' component={ItemDetail} />}
-      <NavigationStack.Screen name='Cart' component={Cart} />
       <NavigationStack.Screen name='Options' component={Profile} />
       <NavigationStack.Screen name='Addresses' component={Addresses} />
       <NavigationStack.Screen name='NewAddress' component={NewAddress} />
