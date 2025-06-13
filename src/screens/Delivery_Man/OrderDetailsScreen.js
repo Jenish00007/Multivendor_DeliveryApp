@@ -118,8 +118,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             destLat = orderDetails?.shippingAddress?.latitude;
             destLng = orderDetails?.shippingAddress?.longitude;
           } else if (type === 'restaurant') {
-            destLat = orderDetails?.store?.latitude;
-            destLng = orderDetails?.store?.longitude;
+            destLat = orderDetails?.store?.ShopAddress?.latitude;
+            destLng = orderDetails?.store?.ShopAddress?.longitude;
           }
 
           if (!destLat || !destLng) {
