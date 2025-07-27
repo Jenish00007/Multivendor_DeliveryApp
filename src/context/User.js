@@ -27,7 +27,18 @@ export const UserProvider = props => {
   const [formetedProfileData, setFormetedProfileData] = useState(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [errorProfile, setErrorProfile] = useState(null)
+  const [userType, setUserType] = useState(null) // 'user' or 'deliveryman'
   const networkStatus='1'
+
+  // Helper function to determine if user is a delivery man
+  const isDeliveryMan = () => {
+    return userType === 'deliveryman';
+  };
+
+  // Helper function to determine if user is a regular user
+  const isRegularUser = () => {
+    return userType === 'user';
+  };
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -39,7 +50,8 @@ export const UserProvider = props => {
      setLoadingProfile(true);
     
       try {
-        const response = await fetch(`${API_URL}/user/user-info/68349faa87cd0bb608a5cff8`, {
+        // Fetch delivery man profile
+        const response = await fetch(`${API_URL}/deliveryman/me`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -49,17 +61,18 @@ export const UserProvider = props => {
         });
 
         const data = await response.json();
-        console.log("Data",data)
+        console.log("Delivery Man Data", data);
+        
         if (response.ok) {
-      
-          setProfile(data.user); 
-          setFormetedProfileData(data.user)
+          setProfile(data.deliveryMan); 
+          setFormetedProfileData(data.deliveryMan);
+          setUserType('deliveryman');
         } else {
-         
-          console.log('Error Status:', response.status);  // Log status code for debugging
-          console.log('Error Message:', data);  // Log the response body in case of error
+          console.log('Error Status:', response.status);
+          console.log('Error Message:', data);
           setErrorProfile(data.message || 'Failed to fetch profile');
         }
+        
       } catch (error) {
         // This will catch network errors (e.g., if the device is offline)
         console.log('Network request failed:', error);
@@ -91,6 +104,7 @@ export const UserProvider = props => {
       // Clear any other user-related data
       setProfile(null)
       setFormetedProfileData(null)
+      setUserType(null)
       setCart([])
 
       return true
@@ -192,6 +206,9 @@ export const UserProvider = props => {
         loadingProfile: loadingProfile,
         errorProfile,
         formetedProfileData,
+        userType,
+        isDeliveryMan,
+        isRegularUser,
         logout,
         addToCart,
         cart,

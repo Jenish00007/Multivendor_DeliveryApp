@@ -13,6 +13,7 @@ import Spinner from '../Spinner/Spinner';
 import EmptyView from '../EmptyView/EmptyView';
 import AuthContext from '../../context/Auth';
 import { StatusBar } from 'react-native';
+import { useAppBranding } from '../../utils/translationHelper';
 
 const ActiveOrders = ({ navigation, activeOrders, loading, error, reFetchOrders }) => {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ const ActiveOrders = ({ navigation, activeOrders, loading, error, reFetchOrders 
   const currentTheme = theme[themeContext.ThemeValue];
   const configuration = useContext(ConfigurationContext);
   const { token } = useContext(AuthContext);
+  const branding = useAppBranding();
 
   useEffect(() => {
     navigation.setOptions({
@@ -74,7 +76,7 @@ const ActiveOrders = ({ navigation, activeOrders, loading, error, reFetchOrders 
   return (
     <View style={[styles.container, {backgroundColor: currentTheme.themeBackground}]}>
       <StatusBar
-        backgroundColor="#F16122"
+        backgroundColor={branding.primaryColor}
         barStyle="dark-content"
         translucent={false}
         animated={true}

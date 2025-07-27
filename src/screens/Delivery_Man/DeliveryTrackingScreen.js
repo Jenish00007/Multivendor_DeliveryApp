@@ -9,11 +9,13 @@ import {
   Dimensions,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import { useAppBranding } from '../../utils/translationHelper';
 
 const { width, height } = Dimensions.get('window');
 
 const DeliveryTrackingScreen = () => {
   const [status, setStatus] = useState('Delivering');
+  const branding = useAppBranding();
 
   const orderData = {
     orderNumber: "#2345",
@@ -43,29 +45,29 @@ const DeliveryTrackingScreen = () => {
   const deliveryCoords = { latitude: 37.7849, longitude: -122.4094 }; // Nearby
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={branding.primaryColor} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: branding.backgroundColor }]}>
         <View style={styles.orderInfo}>
-          <Text style={styles.orderNumber}>Order {orderData.orderNumber}</Text>
-          <Text style={styles.transactionNo}>Transaction no {orderData.transactionNo}</Text>
+          <Text style={[styles.orderNumber, { color: branding.textColor }]}>Order {orderData.orderNumber}</Text>
+          <Text style={[styles.transactionNo, { color: branding.textColor }]}>Transaction no {orderData.transactionNo}</Text>
         </View>
         <View style={styles.deliveryPin}>
-          <Text style={styles.pinLabel}>Delivery Pin:</Text>
-          <Text style={styles.pinNumber}>{orderData.deliveryPin}</Text>
+          <Text style={[styles.pinLabel, { color: branding.textColor }]}>Delivery Pin:</Text>
+          <Text style={[styles.pinNumber, { color: branding.primaryColor }]}>{orderData.deliveryPin}</Text>
         </View>
       </View>
 
       {/* Delivery Type Bar */}
-      <View style={styles.deliveryTypeBar}>
+      <View style={[styles.deliveryTypeBar, { backgroundColor: branding.primaryColor }]}>
         <View style={styles.deliveryTypeLeft}>
-          <Text style={styles.deliveryTypeLabel}>Delivery Type</Text>
-          <Text style={styles.deliveryTypeValue}>{orderData.deliveryType}</Text>
+          <Text style={[styles.deliveryTypeLabel, { color: branding.whiteColorText }]}>Delivery Type</Text>
+          <Text style={[styles.deliveryTypeValue, { color: branding.whiteColorText }]}>{orderData.deliveryType}</Text>
         </View>
-        <View style={styles.amountBadge}>
-          <Text style={styles.amountText}>{orderData.amount}</Text>
+        <View style={[styles.amountBadge, { backgroundColor: branding.whiteColorText }]}>
+          <Text style={[styles.amountText, { color: branding.primaryColor }]}>{orderData.amount}</Text>
         </View>
       </View>
 
@@ -96,40 +98,40 @@ const DeliveryTrackingScreen = () => {
       </View>
 
       {/* Bottom Sheet */}
-      <View style={styles.bottomSheet}>
+      <View style={[styles.bottomSheet, { backgroundColor: branding.backgroundColor }]}>
         {/* Address Information */}
         <View style={styles.addressSection}>
           <View style={styles.addressItem}>
-            <View style={styles.addressDot} />
+            <View style={[styles.addressDot, { backgroundColor: branding.primaryColor }]} />
             <View style={styles.addressContent}>
-              <Text style={styles.addressLabel}>Pickup from</Text>
-              <Text style={styles.addressText}>{orderData.pickupAddress}</Text>
+              <Text style={[styles.addressLabel, { color: branding.textColor }]}>Pickup from</Text>
+              <Text style={[styles.addressText, { color: branding.textColor }]}>{orderData.pickupAddress}</Text>
             </View>
           </View>
           
-          <View style={styles.routeDivider} />
+          <View style={[styles.routeDivider, { backgroundColor: branding.primaryColor }]} />
           
           <View style={styles.addressItem}>
-            <View style={[styles.addressDot, styles.deliveryDot]} />
+            <View style={[styles.addressDot, styles.deliveryDot, { borderColor: branding.primaryColor }]} />
             <View style={styles.addressContent}>
-              <Text style={styles.addressLabel}>Delivery to</Text>
-              <Text style={[styles.addressText, styles.deliveryAddressText]}>{orderData.deliveryAddress}</Text>
+              <Text style={[styles.addressLabel, { color: branding.textColor }]}>Delivery to</Text>
+              <Text style={[styles.addressText, styles.deliveryAddressText, { color: branding.primaryColor }]}>{orderData.deliveryAddress}</Text>
             </View>
           </View>
         </View>
 
         {/* Customer Information */}
-        <View style={styles.customerSection}>
+        <View style={[styles.customerSection, { borderColor: branding.secondaryBackground }]}>
           <View style={styles.customerInfo}>
-            <View style={styles.customerAvatar}>
-              <Text style={styles.avatarText}>D</Text>
+            <View style={[styles.customerAvatar, { backgroundColor: branding.primaryColor }]}>
+              <Text style={[styles.avatarText, { color: branding.whiteColorText }]}>D</Text>
             </View>
             <View style={styles.customerDetails}>
-              <Text style={styles.customerName}>{orderData.customer.name}</Text>
-              <Text style={styles.customerRole}>{orderData.customer.role}</Text>
+              <Text style={[styles.customerName, { color: branding.textColor }]}>{orderData.customer.name}</Text>
+              <Text style={[styles.customerRole, { color: branding.textColor }]}>{orderData.customer.role}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.callButton} onPress={handleCall}>
+          <TouchableOpacity style={[styles.callButton, { backgroundColor: branding.secondaryBackground }]} onPress={handleCall}>
             <Text style={styles.callIcon}>📞</Text>
           </TouchableOpacity>
         </View>
@@ -137,12 +139,12 @@ const DeliveryTrackingScreen = () => {
         {/* Status and Action */}
         <View style={styles.actionSection}>
           <View style={styles.statusContainer}>
-            <Text style={styles.statusLabel}>Status</Text>
-            <Text style={styles.statusValue}>{status}</Text>
+            <Text style={[styles.statusLabel, { color: branding.textColor }]}>Status</Text>
+            <Text style={[styles.statusValue, { color: branding.textColor }]}>{status}</Text>
           </View>
-          <TouchableOpacity style={styles.finishButton} onPress={handleFinish}>
-            <Text style={styles.finishIcon}>✓</Text>
-            <Text style={styles.finishText}>Finish</Text>
+          <TouchableOpacity style={[styles.finishButton, { backgroundColor: branding.primaryColor }]} onPress={handleFinish}>
+            <Text style={[styles.finishIcon, { color: branding.whiteColorText }]}>✓</Text>
+            <Text style={[styles.finishText, { color: branding.whiteColorText }]}>Finish</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -153,7 +155,6 @@ const DeliveryTrackingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -161,7 +162,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
   },
   orderInfo: {
     flex: 1,
@@ -169,31 +169,26 @@ const styles = StyleSheet.create({
   orderNumber: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#374151',
     marginBottom: 4,
   },
   transactionNo: {
     fontSize: 12,
-    color: '#9CA3AF',
   },
   deliveryPin: {
     alignItems: 'flex-end',
   },
   pinLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginBottom: 2,
   },
   pinNumber: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#F97316',
   },
   deliveryTypeBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F97316',
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
@@ -202,17 +197,14 @@ const styles = StyleSheet.create({
   },
   deliveryTypeLabel: {
     fontSize: 12,
-    color: '#FFFFFF',
     opacity: 0.8,
     marginBottom: 2,
   },
   deliveryTypeValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
   amountBadge: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -220,7 +212,6 @@ const styles = StyleSheet.create({
   amountText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F97316',
   },
   mapContainer: {
     flex: 1,
@@ -231,7 +222,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#eee',
   },
   bottomSheet: {
-    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
@@ -257,19 +247,16 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#F16122',
     marginRight: 12,
     marginTop: 4,
   },
   deliveryDot: {
     backgroundColor: '#FFFFFF',
     borderWidth: 3,
-    borderColor: '#F16122',
   },
   routeDivider: {
     width: 2,
     height: 20,
-    backgroundColor: '#F16122',
     marginLeft: 5,
     marginVertical: 8,
   },
@@ -278,16 +265,13 @@ const styles = StyleSheet.create({
   },
   addressLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginBottom: 4,
   },
   addressText: {
     fontSize: 14,
-    color: '#374151',
     fontWeight: '500',
   },
   deliveryAddressText: {
-    color: '#F16122',
     fontWeight: '600',
   },
   customerSection: {
@@ -297,7 +281,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#F3F4F6',
     marginBottom: 20,
   },
   customerInfo: {
@@ -309,13 +292,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F97316',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   avatarText: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -325,18 +306,15 @@ const styles = StyleSheet.create({
   customerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 2,
   },
   customerRole: {
     fontSize: 12,
-    color: '#9CA3AF',
   },
   callButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#D1FAE5',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -353,29 +331,24 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginBottom: 4,
   },
   statusValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
   },
   finishButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F16122',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 25,
     gap: 8,
   },
   finishIcon: {
-    color: '#FFFFFF',
     fontSize: 16,
   },
   finishText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },

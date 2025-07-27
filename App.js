@@ -29,7 +29,6 @@ import ThemeContext from './src/ui/ThemeContext/ThemeContext'
 import { ConfigurationProvider } from './src/context/Configuration'
 import { UserProvider } from './src/context/User'
 import { AuthProvider } from './src/context/Auth'
-import { theme as Theme } from './src/utils/themeColors'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import 'expo-dev-client'
 import useEnvVars, { isProduction } from './environment'
@@ -41,11 +40,15 @@ import ReviewModal from './src/components/Review'
 import { NOTIFICATION_TYPES } from './src/utils/enums'
 import { useColorScheme } from 'react-native'
 import useWatchLocation from './src/ui/hooks/useWatchLocation'
+import { useAppBranding } from './src/utils/translationHelper'
 
 LogBox.ignoreLogs([
   'Warning: ...',
   'Sentry Logger ',
-  'Constants.deviceYearClass'
+  'Constants.deviceYearClass',
+  '[Tracing]',
+  'http.client',
+  'Starting.*span.*transaction'
 ]) // Ignore log notification by message
 LogBox.ignoreAllLogs() // Ignore all log notifications
 
@@ -72,6 +75,7 @@ export default function App() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isInitializingLocation, setIsInitializingLocation] = useState(true)
   const [showSplash, setShowSplash] = useState(true)
+  const branding = useAppBranding()
   useWatchLocation()
   useEffect(() => {
     const loadAppData = async () => {
@@ -204,13 +208,13 @@ export default function App() {
         style={[
           styles.flex,
           styles.mainContainer,
-          { backgroundColor: Theme[theme].startColor }
+          { backgroundColor: branding.primaryColor }
         ]}
       >
-        <TextDefault textColor={Theme[theme].white} bold>
+        <Text style={[styles.updatingText, { color: branding.whiteColorText }]}>
           Please wait while app is updating
-        </TextDefault>
-        <ActivityIndicator size='large' color={Theme[theme].white} />
+        </Text>
+        <ActivityIndicator size='large' color={branding.whiteColorText} />
       </View>
     )
   }
@@ -265,7 +269,7 @@ export default function App() {
         <ThemeContext.Provider
           value={{ ThemeValue: theme, dispatch: themeSetter }}>
           <StatusBar
-            backgroundColor={Theme[theme].newheaderColor}
+            backgroundColor={branding.primaryColor}
             barStyle={theme === 'Dark' ? 'light-content' : 'dark-content'}
           />
           <LocationContext.Provider value={{ location, setLocation }}>
@@ -274,7 +278,7 @@ export default function App() {
                 <UserProvider>
                   <OrdersProvider>
                     <AppContainer />
-                    <ReviewModal ref={reviewModalRef} onOverlayPress={onOverlayPress} theme={Theme[theme]} orderId={orderId} />
+                    <ReviewModal ref={reviewModalRef} onOverlayPress={onOverlayPress} theme={branding} orderId={orderId} />
                   </OrdersProvider>
                 </UserProvider>
               </AuthProvider>
@@ -294,6 +298,11 @@ const styles = StyleSheet.create({
   mainContainer: {
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  updatingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 20
   }
 })
 async function registerForPushNotificationsAsync() {

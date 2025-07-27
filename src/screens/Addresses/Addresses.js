@@ -33,12 +33,14 @@ import CustomOtherIcon from '../../assets/SVG/imageComponents/CustomOtherIcon'
 import CustomApartmentIcon from '../../assets/SVG/imageComponents/CustomApartmentIcon'
 import { useTranslation } from 'react-i18next'
 import AuthContext from '../../context/Auth'
+import { useAppBranding } from '../../utils/translationHelper'
 
 function Addresses() {
   const Analytics = analytics()
   const navigation = useNavigation()
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const { t } = useTranslation()
   const { location } = useContext(LocationContext)
 
@@ -103,7 +105,7 @@ function Addresses() {
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS === 'android') {
-        StatusBar.setBackgroundColor(currentTheme.menuBar)
+        StatusBar.setBackgroundColor(branding.primaryColor)
       }
       StatusBar.setBarStyle(
         themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'

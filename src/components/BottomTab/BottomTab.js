@@ -2,18 +2,20 @@ import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import styles from './styles';
+import createStyles from './styles';
 import UserContext from '../../context/User';
-import { theme } from '../../utils/themeColors'
 import { scale } from '../../utils/scaling'
 import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons';
+import { useAppBranding } from '../../utils/translationHelper';
 
 function BottomTab({ screen }) {
   const navigation = useNavigation();
   const { isLoggedIn, cartCount, orders } = useContext(UserContext);
+  const branding = useAppBranding();
+  const styles = createStyles(branding);
 
   const getIconColor = (currentScreen) => {
-    return screen === currentScreen ? theme.Figgo.yellow : theme.Dark.darkGrayText;
+    return screen === currentScreen ? branding.primaryColor : branding.textColor;
   };
 
   const getTextStyle = (currentScreen) => {
@@ -24,7 +26,13 @@ function BottomTab({ screen }) {
     <View style={styles.footerContainer}>
       {/* Home Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('Menu')}
+        onPress={() => {
+          if (isLoggedIn) {
+            navigation.navigate('Menu');
+          } else {
+            navigation.navigate('Login');
+          }
+        }}
         style={styles.footerBtnContainer}
       >
         <MaterialCommunityIcons

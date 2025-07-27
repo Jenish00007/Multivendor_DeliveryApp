@@ -13,11 +13,16 @@ import {
   ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUserContext } from '../../context/User';
 import { API_URL } from '../../config/api';
 import axios from 'axios';
+import { useConfiguration } from '../../context/Configuration';
+import { getAppName } from '../../services/configService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppBranding } from '../../utils/translationHelper';
 
 const OrderRequestScreen = () => {
   const navigation = useNavigation();
@@ -26,33 +31,34 @@ const OrderRequestScreen = () => {
   const [deliveryManId, setDeliveryManId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [additionalNote, setAdditionalNote] = useState('');
+  const { token, formetedProfileData, isDeliveryMan, logout } = useUserContext();
+  const configuration = useConfiguration();
+  const appName = getAppName(configuration.config);
+  const branding = useAppBranding();
+
+  useEffect(() => {
+    
+        fetchOrders();
+      
+  }, [token]);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
       console.log("Fetching orders...");
-      
-      const storedToken = await AsyncStorage.getItem('token');
-      if (!storedToken) {
-        Alert.alert(
-          "Authentication Required",
-          "Please login to view orders",
-          [{ text: "OK", onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }]
-        );
-        return;
-      }
 
-      const authToken = `Bearer ${storedToken}`;
-      
+
+      const token = await AsyncStorage.getItem('token');
+      console.log("Token", token);
       // Get delivery man ID first
       const meResponse = await axios.get(`${API_URL}/deliveryman/me`, {
         headers: {
-          'Authorization': authToken,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
       });
-      
+      console.log("Delivery Man Data", meResponse.data);
       if (!meResponse.data.success || !meResponse.data.deliveryMan?._id) {
         throw new Error('Invalid delivery man data received');
       }
@@ -64,7 +70,7 @@ const OrderRequestScreen = () => {
       // Fetch orders
       const ordersResponse = await axios.get(`${API_URL}/deliveryman/orders`, {
         headers: {
-          'Authorization': authToken,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
@@ -79,9 +85,9 @@ const OrderRequestScreen = () => {
 
     } catch (error) {
       console.error("Error in fetchOrders:", error);
-      
+
       if (error.response?.status === 401) {
-        await AsyncStorage.removeItem('token');
+        logout();
         Alert.alert(
           "Session Expired",
           "Please login again",
@@ -110,21 +116,20 @@ const OrderRequestScreen = () => {
   }, []);
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (token && isDeliveryMan()) {
+      fetchOrders();
+    }
+  }, [token]);
 
   const handleAccept = async (orderId) => {
+    const token = await AsyncStorage.getItem('token');
+    console.log("Token", token);
     if (!orderId || !deliveryManId) {
       Alert.alert('Error', 'Invalid order or delivery man ID');
       return;
     }
 
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
       const response = await axios.put(
         `${API_URL}/order/deliveryman/accept-order/${orderId}`,
         {
@@ -147,19 +152,18 @@ const OrderRequestScreen = () => {
       }
     } catch (error) {
       console.error('Error accepting order:', error);
-      
-      if (error.response?.status === 404) {
-        Alert.alert(
-          'Error',
-          'Unable to accept order. The order may have been taken by another delivery person.',
-          [{ text: 'OK' }]
-        );
-      } else if (error.response?.status === 401) {
+
+      if (error.response?.status === 401) {
+        logout();
         Alert.alert(
           'Session Expired',
           'Please login again',
           [{ text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }]
         );
+      } else if (error.response?.status === 404) {
+        Alert.alert('Error', 'Order not found');
+      } else if (error.response?.status === 400) {
+        Alert.alert('Error', error.response.data.message || 'Cannot accept this order');
       } else {
         Alert.alert(
           'Error',
@@ -181,10 +185,7 @@ const OrderRequestScreen = () => {
 
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
+    console.log("Token", token);
       const response = await axios.put(
         `${API_URL}/order/deliveryman/ignore-order/${orderId}`,
         {},
@@ -206,12 +207,13 @@ const OrderRequestScreen = () => {
       }
     } catch (error) {
       console.error('Error ignoring order:', error);
-      
+
       if (error.response?.status === 404) {
         Alert.alert('Error', 'Order not found');
       } else if (error.response?.status === 400) {
         Alert.alert('Error', error.response.data.message || 'Cannot ignore this order');
       } else if (error.response?.status === 401) {
+        logout();
         Alert.alert(
           'Session Expired',
           'Please login again',
@@ -236,28 +238,17 @@ const OrderRequestScreen = () => {
     const orderStatus = order?.status || 'Processing';
 
     const formatAddress = (address) => {
-      if (!address) return 'Delivery Address';
-      if (typeof address === 'string') return address;
-      
-      // Handle address object
-      const parts = [];
-      if (address.name) parts.push(address.name);
-      if (address.address) parts.push(address.address);
-      if (address.locality) parts.push(address.locality);
-      if (address.city) parts.push(address.city);
-      if (address.state) parts.push(address.state);
-      if (address.pincode) parts.push(address.pincode);
-      
-      return parts.join(', ');
+      if (!address) return 'Address not available';
+      return `${address.street || ''} ${address.city || ''} ${address.state || ''} ${address.zipCode || ''}`.trim();
     };
 
     return (
-      <TouchableOpacity 
-        style={[styles.card, { backgroundColor: '#ffffff' }]} 
-        onPress={() => navigation.navigate('OrderDetailsScreen', { 
+      <TouchableOpacity
+        style={[styles.card, { backgroundColor: branding.backgroundColor }]}
+        onPress={() => navigation.navigate('OrderDetailsScreen', {
           orderId: order?._id,
           restaurant: {
-            name: order?.cart?.[0]?.shopId?.name || 'Qauds',
+            name: order?.cart?.[0]?.shopId?.name || appName,
             cuisine: order?.cart?.[0]?.shopId?.cuisine || '',
             phone: order?.cart?.[0]?.shopId?.phone || 'Phone',
             address: order?.cart?.[0]?.shopId?.address || 'Address'
@@ -282,49 +273,51 @@ const OrderRequestScreen = () => {
         activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>
-          <View style={styles.orderIdContainer}>
-            <Text style={[styles.orderIdLabel, { color: '#374151' }]}>Order ID</Text>
-            <Text style={[styles.orderId, { color: '#374151' }]}>#{order?._id?.slice(-6) || 'N/A'}</Text>
-          </View>
-          <View style={[styles.paymentBadge, { 
-            backgroundColor: order?.paymentMethod === 'COD' ? '#FF6B6B' : '#4ECDC4' 
-          }]}>
-            <Text style={styles.paymentText}>{order?.paymentMethod || 'COD'}</Text>
-          </View>
-        </View>
-        
-        <View style={styles.cardContent}>
-          <View style={styles.infoRow}>
-            <View style={styles.iconContainer}>
-              <MaterialIcon name="store" size={18} color="#FF6B6B" />
-            </View>
-            <Text style={[styles.restaurantText, { color: '#374151' }]}>
-              {order?.cart?.[0]?.shopId?.name || 'Qauds'}
+          <View style={styles.orderInfo}>
+            <Text style={[styles.orderId, { color: branding.textColor }]}>Order #{order._id.slice(-6)}</Text>
+            <Text style={[styles.orderTime, { color: branding.textColor }]}>
+              {new Date(order.createdAt).toLocaleTimeString()}
             </Text>
           </View>
-          
+          <View style={styles.distanceInfo}>
+            <Text style={[styles.distanceText, { color: branding.textColor }]}>
+              {order.distance ? `${order.distance.toFixed(1)} km` : 'N/A'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.cardContent}>
           <View style={styles.infoRow}>
-            <View style={styles.iconContainer}>
-              <MaterialIcon name="location-on" size={18} color="#FF6B6B" />
+            <View style={[styles.iconContainer, { backgroundColor: branding.secondaryBackground }]}>
+              <MaterialIcon name="store" size={18} color={branding.primaryColor} />
             </View>
-            <Text style={styles.addressText} numberOfLines={2}>
+            <Text style={[styles.restaurantText, { color: branding.textColor }]}>
+              {order?.cart?.[0]?.shopId?.name || appName}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <View style={[styles.iconContainer, { backgroundColor: branding.secondaryBackground }]}>
+              <MaterialIcon name="location-on" size={18} color={branding.primaryColor} />
+            </View>
+            <Text style={[styles.addressText, { color: branding.textColor }]} numberOfLines={2}>
               {formatAddress(order?.shippingAddress)}
             </Text>
           </View>
         </View>
-        
+
         <View style={styles.cardActions}>
           {isAssigned ? (
-            <View style={styles.assignedContainer}>
-              <Text style={styles.assignedText}>
+            <View style={[styles.assignedContainer, { backgroundColor: branding.secondaryBackground }]}>
+              <Text style={[styles.assignedText, { color: branding.textColor }]}>
                 {isAssignedToMe ? 'Assigned to you' : 'Assigned to another delivery man'}
               </Text>
               {isAssignedToMe && orderStatus === 'Out for delivery' && (
-                <TouchableOpacity 
-                  style={styles.trackButton}
+                <TouchableOpacity
+                  style={[styles.trackButton, { backgroundColor: branding.primaryColor }]}
                   onPress={() => navigation.navigate('DeliveryTrackingScreen', { orderId: order?._id })}
                 >
-                  <Text style={styles.trackButtonText}>Track Delivery</Text>
+                  <Text style={[styles.trackButtonText, { color: branding.whiteColorText }]}>Track Delivery</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -332,18 +325,18 @@ const OrderRequestScreen = () => {
             orderStatus === 'Processing' && (
               <>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.detailsBtn]}
+                  style={[styles.actionBtn, styles.detailsBtn, { backgroundColor: branding.secondaryBackground }]}
                   onPress={() => handleIgnore(order?._id)}
                 >
-                  <MaterialIcon name="close" size={18} color="#6B7280" />
-                  <Text style={styles.detailsBtnText}>Ignore</Text>
+                  <MaterialIcon name="close" size={18} color={branding.textColor} />
+                  <Text style={[styles.detailsBtnText, { color: branding.textColor }]}>Ignore</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.directionBtn]}
+                  style={[styles.actionBtn, styles.directionBtn, { backgroundColor: branding.primaryColor }]}
                   onPress={() => handleAccept(order?._id)}
                 >
-                  <MaterialIcon name="check" size={18} color="#ffffff" />
-                  <Text style={styles.directionBtnText}>Accept</Text>
+                  <MaterialIcon name="check" size={18} color={branding.whiteColorText} />
+                  <Text style={[styles.directionBtnText, { color: branding.whiteColorText }]}>Accept</Text>
                 </TouchableOpacity>
               </>
             )
@@ -354,21 +347,21 @@ const OrderRequestScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+    <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={branding.primaryColor} />
+
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: branding.backgroundColor, borderBottomColor: branding.secondaryBackground }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#111" />
+          <Icon name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order Request</Text>
+        <Text style={[styles.headerTitle, { color: 'white' }]}>Order Request</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       {/* Order List */}
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -376,8 +369,8 @@ const OrderRequestScreen = () => {
       >
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F16122" />
-            <Text style={styles.loadingText}>Loading orders...</Text>
+            <ActivityIndicator size="large" color={branding.primaryColor} />
+            <Text style={[styles.loadingText, { color: branding.textColor }]}>Loading orders...</Text>
           </View>
         ) : orders.length > 0 ? (
           orders.map((order) => (
@@ -385,9 +378,9 @@ const OrderRequestScreen = () => {
           ))
         ) : (
           <View style={styles.noOrders}>
-            <MaterialIcon name="delivery-dining" size={64} color="#D1D5DB" />
-            <Text style={styles.noOrdersText}>No orders available</Text>
-            <Text style={styles.noOrdersSubText}>
+            <MaterialIcon name="delivery-dining" size={64} color={branding.textColor} />
+            <Text style={[styles.noOrdersText, { color: branding.textColor }]}>No orders available</Text>
+            <Text style={[styles.noOrdersSubText, { color: branding.textColor }]}>
               New orders will appear here when available
             </Text>
           </View>
@@ -402,16 +395,13 @@ const OrderRequestScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     padding: 8,
@@ -421,7 +411,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
   },
   headerSpacer: {
     width: 34,
@@ -447,27 +436,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  orderIdContainer: {
+  orderInfo: {
     flex: 1,
-  },
-  orderIdLabel: {
-    fontSize: 12,
-    opacity: 0.6,
-    marginBottom: 2,
   },
   orderId: {
     fontSize: 18,
     fontWeight: 'bold',
   },
-  paymentBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  paymentText: {
-    color: '#ffffff',
+  orderTime: {
     fontSize: 12,
-    fontWeight: '600',
+    opacity: 0.6,
+    marginTop: 2,
+  },
+  distanceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  distanceText: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginLeft: 8,
   },
   cardContent: {
     marginBottom: 20,
@@ -481,7 +469,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -493,7 +480,6 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontSize: 14,
-    color: '#6B7280',
     flex: 1,
     lineHeight: 20,
   },
@@ -511,42 +497,34 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   detailsBtn: {
-    backgroundColor: '#F3F4F6',
   },
   detailsBtnText: {
-    color: '#6B7280',
     fontWeight: '600',
     fontSize: 14,
   },
   directionBtn: {
-    backgroundColor: '#F16122',
   },
   directionBtnText: {
-    color: '#ffffff',
     fontWeight: '600',
     fontSize: 14,
   },
   assignedContainer: {
     flex: 1,
     paddingVertical: 12,
-    backgroundColor: '#F3F4F6',
     borderRadius: 8,
     alignItems: 'center',
   },
   assignedText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
   },
   trackButton: {
     marginTop: 8,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#3B82F6',
     borderRadius: 6,
   },
   trackButtonText: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -559,7 +537,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
   },
   noOrders: {
     flex: 1,
@@ -570,12 +547,10 @@ const styles = StyleSheet.create({
   noOrdersText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
     marginTop: 16,
   },
   noOrdersSubText: {
     fontSize: 14,
-    color: '#6B7280',
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 32,

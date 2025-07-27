@@ -8,19 +8,21 @@ import { StyleSheet } from 'react-native'
 import { textStyles } from '../utils/textStyles'
 import { scale } from '../utils/scaling'
 import { useTranslation } from 'react-i18next'
+import { useAppBranding } from '../utils/translationHelper'
 
 const screenOptions = props => {
   const { t } = useTranslation()
+  const branding = useAppBranding();
   return {
     headerTitleAlign: 'center',
     headerBackTitleVisible: false,
     headerStyle: {
-      backgroundColor: props.backColor,
+      backgroundColor: branding.primaryColor,
       borderBottomColor: props.lineColor,
       borderBottomWidth: StyleSheet.hairlineWidth
     },
     headerTitleStyle: {
-      color: props.textColor,
+      color: branding.whiteColorText,
       ...textStyles.Bolder,
       ...textStyles.B700,
       backgroundColor: 'transparent'
@@ -29,9 +31,9 @@ const screenOptions = props => {
       marginHorizontal: scale(35)
     },
     headerBackImage: () =>
-      BackButton({ iconColor: props.textColor, icon: 'leftArrow' }),
+      BackButton({ iconColor: branding.whiteColorText, icon: 'leftArrow' }),
     headerRight: () => (
-      <RightButton icon="cart" iconColor={props.iconColor} menuHeader={false} t={t}/>
+      <RightButton icon="cart" iconColor={branding.whiteColorText} menuHeader={false} t={t}/>
     )
   }
 }

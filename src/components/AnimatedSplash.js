@@ -1,72 +1,93 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Dimensions, Image } from 'react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring,
-  withSequence,
-  withDelay,
-  runOnJS
-} from 'react-native-reanimated';
+import { Animated } from 'react-native';
 import { Text } from 'react-native';
-import { theme } from '../utils/themeColors';
 import { StatusBar } from 'react-native';
+import { useConfiguration } from '../context/Configuration';
+import { useAppBranding } from '../utils/translationHelper';
 
 const { width, height } = Dimensions.get('window');
 
 const AnimatedSplash = ({ onAnimationComplete }) => {
-  const logoScale = useSharedValue(0);
-  const logoOpacity = useSharedValue(0);
-  const messageOpacity = useSharedValue(0);
-  const messageTranslateY = useSharedValue(50);
+  const configuration = useConfiguration();
+  const branding = useAppBranding();
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.3)).current;
+  const messageOpacity = useRef(new Animated.Value(0)).current;
+  const messageTranslateY = useRef(new Animated.Value(50)).current;
 
-  const logoStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: logoScale.value }],
-      opacity: logoOpacity.value,
-    };
-  });
-
-  const messageStyle = useAnimatedStyle(() => {
-    return {
-      opacity: messageOpacity.value,
-      transform: [{ translateY: messageTranslateY.value }],
-    };
-  });
+  // Get app name from branding or configuration
+  const appName = branding.appName || configuration?.config?.appName || 'Delivery Partner';
 
   useEffect(() => {
-    // Logo animation
-    logoScale.value = withSpring(1, { damping: 10 });
-    logoOpacity.value = withSpring(1);
+    const animationSequence = Animated.sequence([
+      // Logo animation
+      Animated.parallel([
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Message animation
+      Animated.parallel([
+        Animated.timing(messageOpacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(messageTranslateY, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]);
 
-    // Message animation
-    messageOpacity.value = withDelay(800, withSpring(1));
-    messageTranslateY.value = withDelay(800, withSpring(0));
-
-    // Complete animation after 2.5 seconds
-    const timer = setTimeout(() => {
-      onAnimationComplete();
-    }, 2500);
-
-    return () => clearTimeout(timer);
+    animationSequence.start(() => {
+      if (onAnimationComplete) {
+        onAnimationComplete();
+      }
+    });
   }, []);
 
+  const logoStyle = {
+    opacity: logoOpacity,
+    transform: [{ scale: logoScale }],
+  };
+
+  const messageStyle = {
+    opacity: messageOpacity,
+    transform: [{ translateY: messageTranslateY }],
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: branding.primaryColor }]}>
       <StatusBar
-        backgroundColor="#F16122"
-        barStyle="dark-content"
+        backgroundColor={branding.primaryColor}
+        barStyle="light-content"
         translucent
       />
       <Animated.View style={[styles.logoContainer, logoStyle]}>
-        <Image 
-          source={require('../assets/images/logo.png')}
+        <Image
+          source={branding.splashLogo || branding.logo}
           style={styles.logo}
           resizeMode="contain"
         />
       </Animated.View>
       <Animated.View style={[styles.messageContainer, messageStyle]}>
-        <Text style={styles.welcomeText}>Welcome to Qauds</Text>
+        <Text style={[styles.welcomeText, { color: branding.whiteColorText }]}>
+          Welcome to {appName}
+        </Text>
+        <Text style={[styles.tagline, { color: branding.whiteColorText }]}>
+          Your trusted delivery partner
+        </Text>
       </Animated.View>
     </View>
   );
@@ -75,7 +96,6 @@ const AnimatedSplash = ({ onAnimationComplete }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F16122', 
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -94,19 +114,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   welcomeText: {
-    color: '#000000',
     fontSize: 24,
     fontWeight: '300',
     marginBottom: 5,
   },
   appName: {
-    color: '#000000',
     fontSize: 42,
     fontWeight: '700',
     marginBottom: 10,
   },
   tagline: {
-    color: '#000000',
     fontSize: 16,
     fontWeight: '500',
     opacity: 0.8,

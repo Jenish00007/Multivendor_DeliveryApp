@@ -15,6 +15,7 @@ import screenOptions from './screenOptions'
 import { useResetYourPassword } from './useResetYourPassword'
 import { useTranslation } from 'react-i18next'
 import { Feather } from '@expo/vector-icons'
+import { useAppBranding } from '../../utils/translationHelper'
 
 function ForgotPassword(props) {
   const {
@@ -30,6 +31,7 @@ function ForgotPassword(props) {
     loading
   } = useResetYourPassword()
   const { t } = useTranslation()
+  const branding = useAppBranding()
   useLayoutEffect(() => {
     props.navigation.setOptions(
       screenOptions({
@@ -44,7 +46,7 @@ function ForgotPassword(props) {
   return (
     <SafeAreaView style={styles(currentTheme).safeAreaViewStyles}>
       <StatusBar
-        backgroundColor={currentTheme.themeBackground}
+        backgroundColor={branding.primaryColor}
         barStyle={
           themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'
         }

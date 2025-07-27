@@ -6,11 +6,13 @@ import { LocationContext } from '../../context/Location'
 import AuthContext from '../../context/Auth'
 import { useNavigation } from '@react-navigation/native'
 import UserContext from '../../context/User'
+import { useAppBranding } from '../../utils/translationHelper'
 
 function Notification() {
   const navigation = useNavigation()
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const { location } = useContext(LocationContext)
   const { token } = useContext(AuthContext)
   const { isLoggedIn } = useContext(UserContext)
@@ -112,7 +114,7 @@ function Notification() {
   return (
     <View style={[styles.container, { backgroundColor: currentTheme.themeBackground }]}>
       <StatusBar
-        backgroundColor="#F16122"
+        backgroundColor={branding.primaryColor}
         barStyle="dark-content"
       />
       {notifications.length === 0 ? (

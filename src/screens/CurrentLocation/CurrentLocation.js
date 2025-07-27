@@ -13,6 +13,7 @@ import Spinner from '../../components/Spinner/Spinner'
 import { useTranslation } from 'react-i18next'
 import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps'
 import { customMapStyle } from '../../utils/customMapStyles'
+import { useAppBranding } from '../../utils/translationHelper'
 export default function CurrentLocation() {
   const Analytics = analytics()
   const { t } = useTranslation()
@@ -21,6 +22,7 @@ export default function CurrentLocation() {
   const navigation = useNavigation()
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const { getCurrentLocation, getLocationPermission } = useLocation()
 
   useEffect(() => {
@@ -31,7 +33,7 @@ export default function CurrentLocation() {
   }, [])
   useFocusEffect(() => {
     if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(currentTheme.white)
+      StatusBar.setBackgroundColor(branding.primaryColor)
     }
     StatusBar.setBarStyle( 'dark-content')
   })

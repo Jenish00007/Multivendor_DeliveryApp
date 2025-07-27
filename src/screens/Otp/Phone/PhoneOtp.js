@@ -17,6 +17,7 @@ import usePhoneOtp from './usePhoneOtp'
 import { useTranslation } from 'react-i18next'
 import { Ionicons } from '@expo/vector-icons'
 import { scale } from '../../../utils/scaling'
+import { useAppBranding } from '../../../utils/translationHelper'
 
 function PhoneOtp(props) {
   const {
@@ -34,6 +35,7 @@ function PhoneOtp(props) {
   } = usePhoneOtp()
 
   const { t } = useTranslation()
+  const branding = useAppBranding()
   useLayoutEffect(() => {
     props.navigation.setOptions(
       screenOptions({
@@ -48,7 +50,7 @@ function PhoneOtp(props) {
   return (
     <SafeAreaView style={styles(currentTheme).safeAreaViewStyles}>
       <StatusBar
-        backgroundColor={currentTheme.themeBackground}
+        backgroundColor={branding.primaryColor}
         barStyle={
           themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'
         }

@@ -34,6 +34,7 @@ import { useMutation } from '@apollo/client'
 import { FlashMessage } from '../../ui/FlashMessage/FlashMessage'
 import Spinner from '../../components/Spinner/Spinner'
 import CustomApartmentIcon from '../../assets/SVG/imageComponents/CustomApartmentIcon'
+import { useAppBranding } from '../../utils/translationHelper'
 
 const CREATE_ADDRESS = gql`
   ${createAddress}
@@ -49,6 +50,7 @@ function SaveAddress(props) {
   const { setLocation } = useContext(LocationContext)
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const [selectedLabel, setSelectedLabel] = useState('')
   const inset = useSafeAreaInsets()
   const {  token } = useContext(AuthContext)
@@ -86,7 +88,7 @@ function SaveAddress(props) {
 
   useFocusEffect(() => {
     if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(currentTheme.menuBar)
+      StatusBar.setBackgroundColor(branding.primaryColor)
     }
     StatusBar.setBarStyle(
       themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import axios from 'axios';
-import { API_URL } from '../config';
+import { API_URL } from '../config/api';
 
 const PaymentGateway = ({ amount, onSuccess, onError }) => {
   const [loading, setLoading] = useState(true);

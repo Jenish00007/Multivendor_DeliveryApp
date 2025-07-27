@@ -62,6 +62,7 @@ import CarouselSlider from '../../components/Slider/Slider'
 import BottomTab from '../../components/BottomTab/BottomTab'
 import NewAddress from '../NewAddress/NewAddress'
 import NewFiggoStore from '../../components/NewFiggoStore/NewFiggoStore'
+import { useAppBranding } from '../../utils/translationHelper'
 
 const RESTAURANTS = gql`
   ${restaurantListPreview}
@@ -81,6 +82,7 @@ function Main(props) {
   const navigation = useNavigation()
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const { getCurrentLocation } = useLocation()
   const locationData = location
   const [hasActiveOrders, setHasActiveOrders] = useState(false)
@@ -271,7 +273,7 @@ function Main(props) {
 
   useFocusEffect(() => {
     if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(currentTheme.newheaderColor)
+      StatusBar.setBackgroundColor(branding.primaryColor)
     }
     StatusBar.setBarStyle('dark-content')
   })

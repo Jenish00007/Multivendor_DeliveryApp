@@ -64,6 +64,9 @@ import CategoryListView from '../../components/NearByShop/CategoryListView'
 import NewFiggoStore from '../../components/NewFiggoStore/NewFiggoStore'
 import axios from 'axios'
 import { API_URL } from '../../config/api'
+import { useConfiguration } from '../../context/Configuration'
+import { getAppName } from '../../services/configService'
+import { useAppBranding } from '../../utils/translationHelper'
 
 
 const RESTAURANTS = gql`
@@ -115,6 +118,7 @@ function Menu() {
   const navigation = useNavigation()
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const { getCurrentLocation } = useLocation()
   const locationData = location
   const [localZoneId, setLocalZoneId] = useState('[1]')
@@ -137,6 +141,8 @@ function Menu() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef(null);
+  const configuration = useConfiguration();
+  const appName = getAppName(configuration.config);
       
   const { data, refetch, networkStatus, loading, error } = useQuery(
     RESTAURANTS,
@@ -197,7 +203,7 @@ function Menu() {
   //Theme setup android and ios
   useFocusEffect(() => {
     if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(currentTheme.newheaderColor)
+      StatusBar.setBackgroundColor(branding.primaryColor)
     }
     StatusBar.setBarStyle('dark-content')
   })
@@ -303,6 +309,10 @@ function Menu() {
   const [allStoresLoading, setAllStoresLoading] = useState(true);
   const [flashSaleItemLoading, setFlashSaleItemLoading] = useState(true);
   const [recommendedItemLoading, setRecommendedItemLoading] = useState(true);
+  
+  // Add ref to track if categories have been fetched
+  const categoriesFetchedRef = useRef(false);
+  
   // Add loading placeholder component
   const ListLoadingComponent = ({ horizontal = true, count = 3, type = 'store' }) => {
     // Define sizes based on type
@@ -398,6 +408,11 @@ function Menu() {
 
   // Update categories fetch
   useEffect(() => {
+    // Only fetch categories once
+    if (categoriesFetchedRef.current) {
+      return;
+    }
+    
     const fetchCategories = async () => {
       setCategoriesLoading(true);
       try {
@@ -413,16 +428,16 @@ function Menu() {
       
         if (json?.data?.length > 0) {
           setCategories(json?.data);
-         
         }
       } catch (error) {
         console.error('Error fetching categories:', error);
       } finally {
         setCategoriesLoading(false);
+        categoriesFetchedRef.current = true; // Mark as fetched
       }
     };
     fetchCategories();
-  }, [moduleId, zoneId]);
+  }, []); // Remove dependencies since we only want to fetch once
 
   // Update supermarkets fetch
   useEffect(() => {
@@ -974,8 +989,8 @@ function Menu() {
                       />
                     )}
 
-                    {/* New on Qauds Section */}
-                    <TextDefault style={styles().sectionTitle}>New on Qauds</TextDefault>
+                  
+                    <TextDefault style={styles().sectionTitle}>New on {appName}</TextDefault>
                     {nearbyMarketsLoading ? (
                       <ListLoadingComponent count={3} type="nearbyStore" />
                     ) : (

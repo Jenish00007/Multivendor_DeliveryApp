@@ -1,29 +1,129 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Switch, RefreshControl, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, RefreshControl, StatusBar, Alert, Platform, Linking } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import RestaurantPreparing from '../../assets/SVG/restaurant-preparing';
 import DeliveryIcon from '../../assets/SVG/delivery-icon';
 import BottomTab from '../../components/BottomTab/BottomTab';
+import Logo from '../../components/Logo/Logo';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import TextDefault from '../../components/Text/TextDefault/TextDefault';
-import { theme } from '../../utils/themeColors';
-import ThemeContext from '../../ui/ThemeContext/ThemeContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUserContext } from '../../context/User';
 import { API_URL } from '../../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import AuthContext from '../../context/Auth';
+import { FlashMessage } from '../../ui/FlashMessage/FlashMessage';
+import { useConfiguration } from '../../context/Configuration';
+import { useAppBranding } from '../../utils/translationHelper';
 
 const DeliveryHome = () => {
     const navigation = useNavigation();
     const [isOnline, setIsOnline] = useState(false);
     const [orders, setOrders] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
-    const themeContext = React.useContext(ThemeContext);
-    const currentTheme = theme[themeContext.ThemeValue];
+    const { token, formetedProfileData, isDeliveryMan } = useUserContext();
+    const { logout } = React.useContext(AuthContext);
+    const { appName } = useConfiguration();
+    const branding = useAppBranding();
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            FlashMessage({
+                message: 'Logged out successfully',
+                type: 'success'
+            });
+        } catch (error) {
+            console.error('Logout error:', error);
+            FlashMessage({
+                message: 'Error during logout',
+                type: 'danger'
+            });
+        }
+    }; 
+     useEffect(() => {
+    
+        fetchOrders();
+      
+  }, [token]);
+
+  const handleDirection = async (order) => {
+    try {
+      let destinationAddress = '';
+      let destinationName = '';
+      let coordinates = null;
+      
+      // Check for customer location with coordinates (priority)
+      if (order?.userLocation?.latitude && order?.userLocation?.longitude) {
+        coordinates = {
+          latitude: order.userLocation.latitude,
+          longitude: order.userLocation.longitude
+        };
+        destinationAddress = order.userLocation.deliveryAddress || 'Customer Location';
+        destinationName = order.user?.name || order.shippingAddress?.name || 'Customer';
+      } else {
+        // Fallback to address-based navigation
+        destinationAddress = order?.shippingAddress?.address || 
+                           order?.shippingAddress?.address1 || 
+                           'Customer Address';
+        destinationName = order?.user?.name || 
+                         order?.shippingAddress?.name || 
+                         'Customer';
+      }
+
+      if (!destinationAddress && !coordinates) {
+        Alert.alert('Error', 'Destination address not available');
+        return;
+      }
+
+      let mapsUrl = '';
+      
+      if (coordinates) {
+        // Use coordinates for more accurate navigation
+        mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${coordinates.latitude},${coordinates.longitude}`;
+      } else {
+        // Fallback to address-based navigation
+        const encodedAddress = encodeURIComponent(destinationAddress);
+        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+      }
+      
+      // Check if the URL can be opened
+      const canOpen = await Linking.canOpenURL(mapsUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(mapsUrl);
+      } else {
+        // Fallback to Apple Maps on iOS or try alternative
+        let fallbackUrl = '';
+        if (coordinates) {
+          fallbackUrl = Platform.OS === 'ios' 
+            ? `http://maps.apple.com/?daddr=${coordinates.latitude},${coordinates.longitude}`
+            : `geo:${coordinates.latitude},${coordinates.longitude}`;
+        } else {
+          const encodedAddress = encodeURIComponent(destinationAddress);
+          fallbackUrl = Platform.OS === 'ios' 
+            ? `http://maps.apple.com/?q=${encodedAddress}`
+            : `geo:0,0?q=${encodedAddress}`;
+        }
+        
+        await Linking.openURL(fallbackUrl);
+      }
+    } catch (error) {
+      console.error('Error in handleDirection:', error);
+      Alert.alert('Error', 'Failed to open directions. Please check if you have a maps app installed.');
+    }
+  };
 
     const fetchOrders = async () => {
         try {
             const token = await AsyncStorage.getItem('token');
+    console.log("Token", token);
+            if (!token) {
+                console.log('No token available');
+                return;
+            }
+            
             const response = await fetch(`${API_URL}/deliveryman/orders`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -52,8 +152,10 @@ const DeliveryHome = () => {
     }, []);
 
     useEffect(() => {
-        fetchOrders();
-    }, []);
+        if (token && isDeliveryMan()) {
+            fetchOrders();
+        }
+    }, [token]);
 
     const toggleSwitch = () => {
         setIsOnline((previousState) => !previousState);
@@ -63,37 +165,37 @@ const DeliveryHome = () => {
         navigation.navigate('OrderDetailsScreen', {
             orderId: order._id,
             restaurant: {
-                name: order.restaurant?.name || 'Restaurant Name',
-                address: order.restaurant?.address || 'Restaurant Address',
-                phone: order.restaurant?.phone || 'Restaurant Phone'
+                name: order.store?.name || order.shopName?.name || 'Shop Name',
+                address: order.store?.address || order.store?.ShopAddress?.address || 'Shop Address',
+                phone: order.store?.phone || 'Shop Phone'
             },
             customer: {
-                name: order.customer?.name || 'Customer Name',
-                address: order.deliveryAddress,
-                phone: order.customer?.phone || 'Customer Phone'
+                name: order.customer?.name || order.user?.name || 'User Name',
+                address: order.deliveryAddress || order.shippingAddress?.address || 'User Address',
+                phone: order.customer?.phone || order.user?.phone || 'User Phone'
             },
             items: order.items || [],
             totalItems: order.items?.length || 0,
-            paymentMethod: order.paymentMethod || 'COD',
-            additionalNote: order.note || ''
+            paymentMethod: order.paymentMethod || order.paymentInfo?.type || 'COD',
+            additionalNote: order.note || order.delivery_instruction || ''
         });
     };
 
     const OrderCard = ({ order }) => (
         <TouchableOpacity 
-            style={[styles.card, { backgroundColor: currentTheme.themeBackground === '#000' ? '#1a1a1a' : '#ffffff' }]} 
+            style={[styles.card, { backgroundColor: branding.backgroundColor }]} 
             onPress={() => handleOrderPress(order)}
             activeOpacity={0.7}
         >
             <View style={styles.cardHeader}>
                 <View style={styles.orderIdContainer}>
-                    <Text style={[styles.orderIdLabel, { color: currentTheme.newFontcolor }]}>Order ID</Text>
-                    <Text style={[styles.orderId, { color: currentTheme.newFontcolor }]}>#{order._id.slice(-6)}</Text>
+                    <Text style={[styles.orderIdLabel, { color: branding.textColor }]}>Order ID</Text>
+                    <Text style={[styles.orderId, { color: branding.textColor }]}>#{order._id.slice(-6)}</Text>
                 </View>
                 <View style={[styles.paymentBadge, { 
-                    backgroundColor: order.paymentMethod === 'COD' ? '#FF6B6B' : '#4ECDC4' 
+                    backgroundColor: order.paymentInfo?.type === 'cash_on_delivery' ? branding.cartDeleteColor : branding.cartDiscountColor 
                 }]}>
-                    <Text style={styles.paymentText}>{order.paymentMethod}</Text>
+                    <Text style={[styles.paymentText, { color: branding.whiteColorText }]}>{order.paymentInfo?.type === 'cash_on_delivery' ? 'COD' : 'Online'}</Text>
                 </View>
             </View>
             
@@ -102,37 +204,37 @@ const DeliveryHome = () => {
                     <View style={styles.iconContainer}>
                         <RestaurantPreparing width={18} height={18} />
                     </View>
-                    <Text style={[styles.restaurantText, { color: currentTheme.newFontcolor }]}>
-                        {order.restaurant?.name || 'Restaurant Name'}
-                    </Text>
+                    <Text style={[styles.restaurantText, { color: branding.textColor }]}>
+                        {order.shop?.name || order.store?.name || order.shopName?.name || 'Shop Name'}
+                    </Text> 
                 </View>
                 
-                <View style={styles.infoRow}>
+                {/* <View style={styles.infoRow}>
                     <View style={styles.iconContainer}>
                         <MaterialIcon name="location-on" size={18} color="#FF6B6B" />
                     </View>
-                    <Text style={styles.addressText} numberOfLines={2}>
-                        {order.deliveryAddress}
+                    <Text style={[styles.addressText, { color: branding.textColor }]} numberOfLines={2}>
+                        {order.shop?.address || order.store?.address || order.store?.ShopAddress?.address || 'Shop Address'}
                     </Text>
-                </View>
+                </View> */}
             </View>
             
             <View style={styles.cardActions}>
                 <TouchableOpacity
-                    style={[styles.actionBtn, styles.detailsBtn]}
+                    style={[styles.actionBtn, styles.detailsBtn, { backgroundColor: branding.secondaryBackground }]}
                     onPress={() => handleOrderPress(order)}
                     activeOpacity={0.8}
                 >
-                    <MaterialIcon name="info-outline" size={18} color="#6B7280" />
-                    <Text style={styles.detailsBtnText}>Details</Text>
+                    <MaterialIcon name="info-outline" size={18} color={branding.textColor} />
+                    <Text style={[styles.detailsBtnText, { color: branding.textColor }]}>Details</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.actionBtn, styles.directionBtn]}
-                    onPress={() => navigation.navigate('DeliveryTrackingScreen', { order })}
+                    style={[styles.actionBtn, styles.directionBtn, { backgroundColor: branding.primaryColor }]}
+                     onPress={() => handleDirection(order)}
                     activeOpacity={0.8}
                 >
-                    <MaterialIcon name="directions" size={18} color="#ffffff" />
-                    <Text style={styles.directionBtnText}>Navigate</Text>
+                    <MaterialIcon name="directions" size={18} color={branding.whiteColorText} />
+                    <Text style={[styles.directionBtnText, { color: branding.whiteColorText }]}>Navigate</Text>
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
@@ -141,41 +243,42 @@ const DeliveryHome = () => {
     const StatsCard = ({ title, value, color, icon }) => (
         <View style={[styles.statsCard, { backgroundColor: color }]}>
             <View style={styles.statsHeader}>
-                <MaterialIcon name={icon} size={24} color="#ffffff" />
-                <Text style={styles.statsValue}>{value}</Text>
+                <MaterialIcon name={icon} size={24} color={branding.whiteColorText} />
+                <Text style={[styles.statsValue, { color: branding.whiteColorText }]}>{value}</Text>
             </View>
-            <Text style={styles.statsTitle}>{title}</Text>
+            <Text style={[styles.statsTitle, { color: branding.whiteColorText }]}>{title}</Text>
         </View>
     );
 
     return (
         <>
-            <StatusBar barStyle="light-content" backgroundColor="#1F2937" />
-            <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.themeBackground }]}>
+            <StatusBar barStyle="light-content" backgroundColor={branding.primaryColor} />
+            <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
                 <View style={styles.content}>
                     {/* Enhanced Header */}
                     <View style={styles.headerContainer}>
                         <View style={styles.headerTop}>
                             <View style={styles.headerLeft}>
-                                <View style={styles.logoContainer}>
-                                    <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
+                                <View style={[styles.logoContainer, { backgroundColor: branding.secondaryBackground }]}>
+                                    <Logo style={styles.logo} />
                                 </View>
                                 <View>
-                                    <Text style={[styles.welcomeText, { color: currentTheme.newFontcolor }]}>
+                                    <Text style={[styles.welcomeText, { color: branding.textColor }]}>
                                         Welcome Back
                                     </Text>
-                                    <Text style={[styles.headerTitle, { color: currentTheme.newFontcolor }]}>
-                                        Delivery Partner
+                                    <Text style={[styles.headerTitle, { color: branding.textColor }]}>
+                                        {formetedProfileData?.name || 'Delivery Partner'}
                                     </Text>
                                 </View>
                             </View>
                             
                             <View style={styles.headerRight}>
-                                <TouchableOpacity style={styles.notificationBtn}>
-                                    <MaterialIcon name="notifications" size={24} color={currentTheme.newFontcolor} />
-                                    <View style={styles.notificationBadge}>
-                                        <Text style={styles.notificationCount}>3</Text>
-                                    </View>
+                                <TouchableOpacity 
+                                    style={styles.logoutBtn}
+                                    onPress={handleLogout}
+                                    activeOpacity={0.7}
+                                >
+                                    <MaterialIcon name="logout" size={24} color={branding.textColor} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -246,7 +349,7 @@ const DeliveryHome = () => {
 
                        
                         {/* Enhanced Stats Grid */}
-                        <View style={styles.statsGrid}>
+                        {/* <View style={styles.statsGrid}>
                             <StatsCard 
                                 title="Today's Orders"
                                 value={orders.length.toString()}
@@ -271,14 +374,14 @@ const DeliveryHome = () => {
                                 color="#DC2626"
                                 icon="account-balance-wallet"
                             />
-                        </View>
+                        </View> */}
 
                          {/* Orders Section */}
                          <View style={styles.sectionHeader}>
-                            <Text style={[styles.sectionTitle, { color: currentTheme.newFontcolor }]}>
+                            <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
                                 Active Orders
                             </Text>
-                            <Text style={[styles.sectionSubtitle, { color: currentTheme.newFontcolor }]}>
+                            <Text style={[styles.sectionSubtitle, { color: branding.textColor }]}>
                                 {orders.length} orders available
                             </Text>
                         </View>
@@ -289,9 +392,9 @@ const DeliveryHome = () => {
                             ))
                         ) : (
                             <View style={styles.emptyState}>
-                                <MaterialIcon name="delivery-dining" size={64} color="#D1D5DB" />
-                                <Text style={styles.emptyStateTitle}>No Active Orders</Text>
-                                <Text style={styles.emptyStateText}>
+                                <MaterialIcon name="delivery-dining" size={64} color={branding.textColor} />
+                                <Text style={[styles.emptyStateTitle, { color: branding.textColor }]}>No Active Orders</Text>
+                                <Text style={[styles.emptyStateText, { color: branding.textColor }]}>
                                     New orders will appear here when available
                                 </Text>
                             </View>
@@ -328,11 +431,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
     },
+    headerRight: {
+        alignItems: 'center',
+    },
     logoContainer: {
         width: 50,
         height: 50,
         borderRadius: 25,
-        backgroundColor: '#F3F4F6',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 15,
@@ -351,55 +456,8 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
     },
-    headerRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    notificationBtn: {
-        position: 'relative',
+    logoutBtn: {
         padding: 8,
-    },
-    notificationBadge: {
-        position: 'absolute',
-        top: 4,
-        right: 4,
-        backgroundColor: '#EF4444',
-        borderRadius: 10,
-        minWidth: 20,
-        height: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    notificationCount: {
-        color: '#ffffff',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    statusCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-    },
-    statusLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    statusIndicator: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        marginRight: 12,
-    },
-    statusText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    switch: {
-        transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
     },
     scrollView: {
         flex: 1,
@@ -483,6 +541,7 @@ const styles = StyleSheet.create({
     },
     sectionHeader: {
         marginBottom: 16,
+        marginTop: 16,
     },
     sectionTitle: {
         fontSize: 22,
@@ -527,7 +586,6 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     paymentText: {
-        color: '#ffffff',
         fontSize: 12,
         fontWeight: '600',
     },
@@ -573,18 +631,14 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     detailsBtn: {
-        backgroundColor: '#F3F4F6',
     },
     detailsBtnText: {
-        color: '#6B7280',
         fontWeight: '600',
         fontSize: 14,
     },
     directionBtn: {
-        backgroundColor: '#F16122',
     },
     directionBtnText: {
-        color: '#ffffff',
         fontWeight: '600',
         fontSize: 14,
     },
@@ -597,13 +651,11 @@ const styles = StyleSheet.create({
     emptyStateTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#374151',
         marginTop: 16,
         marginBottom: 8,
     },
     emptyStateText: {
         fontSize: 14,
-        color: '#6B7280',
         textAlign: 'center',
         lineHeight: 20,
     },
@@ -630,13 +682,11 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     statsValue: {
-        color: '#ffffff',
         fontSize: 24,
         fontWeight: 'bold',
         marginTop: 8,
     },
     statsTitle: {
-        color: 'rgba(255, 255, 255, 0.9)',
         fontSize: 14,
         textAlign: 'center',
         fontWeight: '500',

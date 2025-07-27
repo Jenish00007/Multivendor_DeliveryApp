@@ -24,6 +24,7 @@ import Icon from 'react-native-vector-icons/Ionicons'
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons'
 import { API_URL } from '../../config/api'
 import { useNavigation } from '@react-navigation/native'
+import { useAppBranding } from '../../utils/translationHelper'
 
 const DEFAULT_AVATAR = 'https://static.vecteezy.com/system/resources/previews/024/183/535/original/male-avatar-portrait-of-a-young-man-with-glasses-illustration-of-male-character-in-modern-color-style-vector.jpg'
 
@@ -59,6 +60,7 @@ function Register(props) {
 
   const { t } = useTranslation()
   const navigation = useNavigation()
+  const branding = useAppBranding()
 
   const handleRegister = async () => {
     try {
@@ -181,7 +183,7 @@ function Register(props) {
       style={[styles().flex, { backgroundColor: currentTheme.themeBackground }]}
     >
       <StatusBar
-        backgroundColor="#FFFFFF"
+        backgroundColor={branding.primaryColor}
         barStyle="dark-content"
       />
       <KeyboardAvoidingView

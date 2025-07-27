@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { View, TouchableOpacity, StatusBar } from 'react-native'
+import { useAppBranding } from '../../utils/translationHelper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import styles from './styles'
 import ThemeContext from '../../ui/ThemeContext/ThemeContext'
@@ -16,6 +17,7 @@ const Help = props => {
   const { t } = useTranslation()
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
 
   const [links, setLinks] = useState([
     {
@@ -107,7 +109,7 @@ const Help = props => {
       style={styles(currentTheme).flex}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor={currentTheme.themeBackground}
+        backgroundColor={branding.primaryColor}
       />
       <View style={styles(currentTheme).flex}>
         <View style={styles(currentTheme).mainContainer}>

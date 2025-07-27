@@ -65,7 +65,7 @@ function CartComponent(props) {
                 backgroundColor: currentTheme.main
               }
           }>
-          <TextDefault textColor={currentTheme.black} H5 bolder center>
+          <TextDefault textColor={currentTheme.white} H5 bolder center>
             {t('addToCart')}
           </TextDefault>
         </TouchableOpacity>

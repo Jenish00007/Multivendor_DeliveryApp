@@ -1,3 +1,6 @@
+import { getAppName } from '../src/services/configService';
+import { useConfiguration } from '../src/context/Configuration';
+
 export const en = {
   title0: 'Selected Language',
   subtitle0: 'English',
@@ -16,9 +19,8 @@ export const en = {
   description3:
     'Age does not diminish the extreme disappointment of having a scoop of ice cream fall from the cone',
   getStarted: 'Get Started!',
-  welcome:
-    "Welcome to Qauds, sometimes all you need is love. But a little food now and then doesn't hurt.",
-  welcomeScreen: 'Welcome to Qauds',
+  welcome: (appName) => `Welcome to ${appName}, sometimes all you need is love. But a little food now and then doesn't hurt.`,
+  welcomeScreen: (appName) => `Welcome to ${appName}`,
   loginBtn: 'Login',
   registerBtn: 'Register',
   name: 'Name',
@@ -482,7 +484,7 @@ export const en = {
   faq6Description:
     "You can provide feedback through the app by rating your order and leaving comments. You can also give a rating to the restaurant and leave a review.",
     faq7: "Can I order from multiple places at the same time?",
-    faq7Description: "Unfortunately, you can’t choose from multiple restaurants within the same order. However, you can place separate orders from different restaurants at the same time.",
+    faq7Description: "Unfortunately, you can't choose from multiple restaurants within the same order. However, you can place separate orders from different restaurants at the same time.",
   away: 'away',
   placeOrder: 'Place Order',
   continueAsGuest: 'Continue as Guest',

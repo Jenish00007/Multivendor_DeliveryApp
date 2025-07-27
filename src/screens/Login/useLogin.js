@@ -1,6 +1,6 @@
 // useLogin.js
 import { useState, useContext } from 'react'
-import { Alert } from 'react-native'
+import { Alert, Platform } from 'react-native'
 import * as Device from 'expo-device'
 import Constants from 'expo-constants'
 import ThemeContext from '../../ui/ThemeContext/ThemeContext'
@@ -53,23 +53,77 @@ export const useLogin = () => {
     return result
   }
 
+  // Helper: Get Expo push token
+  const getExpoPushToken = async () => {
+    let token = null;
+    if (Device.isDevice) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        Alert.alert('Permission required', 'Failed to get push token for push notification!');
+        return null;
+      }
+      token = (await Notifications.getExpoPushTokenAsync({
+        projectId: Constants.expoConfig?.extra?.eas?.projectId,
+      })).data;
+      console.log('expoPushToken', token);
+    } else {
+      Alert.alert('Physical device required', 'Must use physical device for Push Notifications');
+    }
+    // Android: set notification channel
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+    return token;
+  };
+
+  // Helper: Send push token to backend
+  const sendPushTokenToBackend = async (expoPushToken, accessToken) => {
+    try {
+      const response = await fetch(`${API_URL}/deliveryman/expo-push-token`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ token: expoPushToken }),
+      });
+      console.log('Push token update response status:', response.status);
+      const text = await response.text();
+      console.log('Push token update response text:', text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('Failed to parse JSON:', e, text);
+        data = null;
+      }
+      if (!response.ok) {
+        console.warn('Failed to update push token:', data && data.message ? data.message : text);
+      } else {
+        console.log('Push token updated on backend:', data);
+      }
+    } catch (err) {
+      console.error('Failed to send push token to backend:', err);
+    }
+  };
+
   async function loginAction() {
     if (!validateCredentials()) return
 
     setLoading(true)
     try {
-      let notificationToken = null
-      if (Device.isDevice) {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync()
-        if (existingStatus === 'granted') {
-          notificationToken = (
-            await Notifications.getExpoPushTokenAsync({
-              projectId: Constants.expoConfig.extra.eas.projectId
-            })
-          ).data
-        }
-      }
-
+      console.log('Attempting delivery man login with:', { email: input });
+      
       const response = await fetch(`${API_URL}/deliveryman/login`, {
         method: 'POST',
         headers: {
@@ -94,11 +148,26 @@ export const useLogin = () => {
         throw new Error('Invalid response from server');
       });
       
+      console.log('Login response status:', response.status);
+      console.log('Login response data:', data);
+      
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Invalid email or password');
+        let errorMessage = data.message || 'Login failed';
+        
+        // Provide more specific error messages
+        if (response.status === 400) {
+          if (data.message?.includes("doesn't exists")) {
+            errorMessage = 'No delivery man account found with this email. Please check your email or register a new account.';
+          } else if (data.message?.includes("correct information")) {
+            errorMessage = 'Invalid email or password. Please check your credentials.';
+          }
+        } else if (response.status === 401) {
+          errorMessage = 'Invalid email or password';
+        } else if (response.status === 404) {
+          errorMessage = 'Delivery man account not found. Please check your email or contact support.';
         }
-        throw new Error(data.message || 'Login failed');
+        
+        throw new Error(errorMessage);
       }
 
       if (data.token) {
@@ -120,8 +189,6 @@ export const useLogin = () => {
         // Store token without Bearer prefix
         const token = data.token.startsWith('Bearer ') ? data.token.substring(7) : data.token;
         console.log("Storing token:", token.substring(0, 10) + "...");
-        await AsyncStorage.setItem('token', token);
-        await setTokenAsync(token);
         
         // Check if delivery man is approved
         const deliverymanData = data.deliveryMan || data.user;
@@ -132,9 +199,18 @@ export const useLogin = () => {
           return;
         }
 
-        navigation.navigate({
-          name: 'DeliveryHome',
-          merge: true
+        // Get Expo push token and send to backend
+        const expoPushToken = await getExpoPushToken();
+        if (expoPushToken && data.token) {
+          await sendPushTokenToBackend(expoPushToken, data.token);
+        }
+
+        // Set token - this will automatically trigger navigation to main app
+        await setTokenAsync(token);
+        
+        FlashMessage({
+          message: 'Login successful!',
+          type: 'success'
         });
       } else {
         throw new Error('Invalid response from server');
@@ -153,8 +229,10 @@ export const useLogin = () => {
     try {
       await AsyncStorage.removeItem('token')
       await AsyncStorage.removeItem('user')
+      await AsyncStorage.removeItem('userType')
+      await AsyncStorage.removeItem('deliverymanData')
       setTokenAsync(null)
-      navigation.navigate('Login')
+      // Navigation will be handled automatically by the auth flow
     } catch (error) {
       console.error('Error during logout:', error)
     }

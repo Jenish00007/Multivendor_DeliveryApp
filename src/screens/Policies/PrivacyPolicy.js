@@ -10,14 +10,22 @@ import {
 import { useContext } from 'react';
 import ThemeContext from '../../ui/ThemeContext/ThemeContext';
 import { theme } from '../../utils/themeColors';
+import { useConfiguration } from '../../context/Configuration';
+import { getAppName, getContactEmail } from '../../services/configService';
+import { useAppBranding } from '../../utils/translationHelper';
 
 export default function PrivacyPolicy() {
   const themeContext = useContext(ThemeContext);
   const currentTheme = theme[themeContext.ThemeValue];
+  const configuration = useConfiguration();
+  const branding = useAppBranding();
+  
+  const appName = getAppName(configuration.config);
+  const contactEmail = getContactEmail(configuration.config);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.themeBackground }]}>
-      <StatusBar backgroundColor="#F16122" barStyle="dark-content" />
+      <StatusBar backgroundColor={branding.primaryColor} barStyle="dark-content" />
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           <Text style={[styles.title, { color: currentTheme.fontMainColor }]}>
@@ -32,12 +40,14 @@ export default function PrivacyPolicy() {
             1. Information We Collect
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            At Qauds, we collect various types of information to provide and improve our service:
-            • Personal Information (name, email, phone number)
-            • Location Data
-            • Device Information
-            • Transaction History
-            • Usage Data
+            At {appName}, we collect various types of information to provide and improve our service:
+          </Text>
+          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
+            • Personal Information: Name, email address, phone number, delivery address{'\n'}
+            • Device Information: Device type, operating system, unique device identifiers{'\n'}
+            • Location Information: GPS coordinates for delivery services{'\n'}
+            • Usage Information: App usage patterns, order history, preferences{'\n'}
+            • Payment Information: Payment method details (processed securely)
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
@@ -45,25 +55,33 @@ export default function PrivacyPolicy() {
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
             We use the collected information for:
-            • Processing your orders
-            • Providing customer support
-            • Sending important updates
-            • Improving our services
-            • Personalizing your experience
+          </Text>
+          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
+            • Processing and delivering your orders{'\n'}
+            • Providing customer support and communication{'\n'}
+            • Improving our services and user experience{'\n'}
+            • Sending relevant notifications and updates{'\n'}
+            • Ensuring security and preventing fraud
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
-            3. Data Security
+            3. Information Sharing
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            We implement appropriate security measures to protect your personal information from unauthorized access, alteration, disclosure, or destruction.
+            We do not sell, trade, or rent your personal information to third parties. We may share information with:
+          </Text>
+          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
+            • Restaurants and delivery partners to fulfill orders{'\n'}
+            • Payment processors for secure transactions{'\n'}
+            • Service providers who assist in app operations{'\n'}
+            • Legal authorities when required by law
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
-            4. Third-Party Services
+            4. Data Security
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            We may employ third-party companies and individuals to facilitate our service, provide service-related services, or assist us in analyzing how our service is used.
+            We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the internet is 100% secure.
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
@@ -71,25 +89,20 @@ export default function PrivacyPolicy() {
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
             You have the right to:
-            • Access your personal data
-            • Correct inaccurate data
-            • Request deletion of your data
-            • Object to data processing
-            • Data portability
+          </Text>
+          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
+            • Access and update your personal information{'\n'}
+            • Request deletion of your account and data{'\n'}
+            • Opt-out of marketing communications{'\n'}
+            • Control location permissions{'\n'}
+            • Request data portability
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
-            6. Changes to This Policy
+            6. Contact Us
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.
-          </Text>
-
-          <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
-            7. Contact Us
-          </Text>
-          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            If you have any questions about this Privacy Policy, please contact us at privacy@Qauds.com
+            If you have any questions about this Privacy Policy, please contact us at {contactEmail}
           </Text>
         </View>
       </ScrollView>

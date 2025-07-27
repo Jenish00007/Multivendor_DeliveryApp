@@ -16,12 +16,14 @@ import { useNavigation } from '@react-navigation/native';
 import BottomTab from '../../components/BottomTab/BottomTab';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useAppBranding } from '../../utils/translationHelper';
 
 const OrderHistoryScreen = () => {
   const navigation = useNavigation();
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const branding = useAppBranding();
 
   useEffect(() => {
     fetchOrderHistory();
@@ -44,7 +46,7 @@ const OrderHistoryScreen = () => {
       });
 
       const data = await response.json();
-      console.log("Backend Raw Orders Data:", data.orders);
+      console.log("Backend Raw Orders Data:", data);
       
       if (!response.ok) {
         throw new Error(data.message || 'Failed to fetch order history');
@@ -85,27 +87,27 @@ const OrderHistoryScreen = () => {
 
   const OrderItem = ({ order }) => (
     <TouchableOpacity 
-      style={styles.orderItem}
+      style={[styles.orderItem, { backgroundColor: branding.backgroundColor }]}
       onPress={() => handleOrderPress(order)}
     >
       <View style={styles.orderImageContainer}>
-        <View style={styles.foodImage}>
+        <View style={[styles.foodImage, { backgroundColor: branding.primaryColor }]}>
           <Text style={styles.foodEmoji}>🍔</Text>
         </View>
       </View>
       
       <View style={styles.orderDetails}>
-        <Text style={styles.orderNumber}>Order ID: {order.order_number}</Text>
-        <Text style={styles.itemCount}>{order.order_items_count} Items</Text>
-        <Text style={styles.restaurantName}>{order.restaurant_name}</Text>
+        <Text style={[styles.orderNumber, { color: branding.textColor }]}>Order ID: {order.order_number}</Text>
+        <Text style={[styles.itemCount, { color: branding.textColor }]}>{order.order_items_count} Items</Text>
+        <Text style={[styles.restaurantName, { color: branding.textColor }]}>{order.restaurant_name}</Text>
         
         <View style={styles.orderMeta}>
           <View style={styles.dateTimeContainer}>
-            <Text style={styles.metaIcon}>⏰</Text>
-            <Text style={styles.dateTime}>{order.created_at}</Text>
+            <Text style={[styles.metaIcon, { color: branding.textColor }]}>⏰</Text>
+            <Text style={[styles.dateTime, { color: branding.textColor }]}>{order.created_at}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-            <Text style={styles.statusText}>{order.status}</Text>
+            <Text style={[styles.statusText, { color: branding.whiteColorText }]}>{order.status}</Text>
           </View>
         </View>
       </View>
@@ -115,24 +117,24 @@ const OrderHistoryScreen = () => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'delivered':
-        return '#4CAF50';
+        return branding.cartDiscountColor;
       case 'cancelled':
-        return '#F44336';
+        return branding.cartDeleteColor;
       case 'processing':
         return '#2196F3';
       case 'out_for_delivery':
         return '#FF9800';
       default:
-        return '#9E9E9E';
+        return branding.textColor;
     }
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F16122" />
-          <Text style={styles.loadingText}>Loading order history...</Text>
+          <ActivityIndicator size="large" color={branding.primaryColor} />
+          <Text style={[styles.loadingText, { color: branding.textColor }]}>Loading order history...</Text>
         </View>
       </SafeAreaView>
     );
@@ -140,12 +142,12 @@ const OrderHistoryScreen = () => {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
         <View style={styles.errorContainer}>
-          <Icon name="alert-circle-outline" size={48} color="#F16122" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchOrderHistory}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+          <Icon name="alert-circle-outline" size={48} color={branding.primaryColor} />
+          <Text style={[styles.errorText, { color: branding.textColor }]}>{error}</Text>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: branding.primaryColor }]} onPress={fetchOrderHistory}>
+            <Text style={[styles.retryButtonText, { color: branding.whiteColorText }]}>Retry</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -153,15 +155,15 @@ const OrderHistoryScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={branding.primaryColor} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: branding.backgroundColor, borderBottomColor: branding.secondaryBackground }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#111" />
+          <Icon name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order History</Text>
+        <Text style={[styles.headerTitle, { color: 'white' }]}>Order History</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -169,8 +171,8 @@ const OrderHistoryScreen = () => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {orderHistory.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Icon name="receipt-outline" size={48} color="#9CA3AF" />
-            <Text style={styles.emptyText}>No order history found</Text>
+            <Icon name="receipt-outline" size={48} color={branding.textColor} />
+            <Text style={[styles.emptyText, { color: branding.textColor }]}>No order history found</Text>
           </View>
         ) : (
           orderHistory.map((order) => (
@@ -187,16 +189,13 @@ const OrderHistoryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     padding: 8,
@@ -206,7 +205,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
   },
   headerSpacer: {
     width: 34,
@@ -217,7 +215,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   orderItem: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -238,7 +235,6 @@ const styles = StyleSheet.create({
   foodImage: {
     width: 60,
     height: 60,
-    backgroundColor: '#8B4513',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -260,17 +256,14 @@ const styles = StyleSheet.create({
   orderNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
     marginBottom: 4,
   },
   itemCount: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
   restaurantName: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 8,
   },
   orderMeta: {
@@ -284,12 +277,10 @@ const styles = StyleSheet.create({
   },
   metaIcon: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginRight: 4,
   },
   dateTime: {
     fontSize: 12,
-    color: '#9CA3AF',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -298,7 +289,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#FFFFFF',
     fontWeight: '500',
   },
   loadingContainer: {
@@ -309,7 +299,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
   },
   errorContainer: {
     flex: 1,
@@ -320,18 +309,15 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#EF4444',
     textAlign: 'center',
   },
   retryButton: {
     marginTop: 16,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: '#F16122',
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -345,7 +331,6 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
     textAlign: 'center',
   },
 });

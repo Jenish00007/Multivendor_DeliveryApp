@@ -40,6 +40,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { scale } from '../../utils/scaling'
 import { Card } from 'react-native-paper'
+import { useAppBranding } from '../../utils/translationHelper'
 const { height } = Dimensions.get('window')
 const TOP_BAR_HEIGHT = height * 0.08
 const HEADER_MAX_HEIGHT = height * 0.34
@@ -80,11 +81,12 @@ function ItemDetail(props) {
   } = useContext(UserContext)
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const inset = useSafeAreaInsets()
 
   useFocusEffect(() => {
     if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(currentTheme.menuBar)
+      StatusBar.setBackgroundColor(branding.primaryColor)
     }
     StatusBar.setBarStyle(
       themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'

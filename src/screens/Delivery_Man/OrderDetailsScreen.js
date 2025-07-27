@@ -22,7 +22,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
 import axios from 'axios';
-import Geolocation from '@react-native-community/geolocation';
+import { useAppBranding } from '../../utils/translationHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -34,6 +34,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
   const [enteredOtp, setEnteredOtp] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
+  const branding = useAppBranding();
 
   const fetchOrderDetails = async () => {
     try {
@@ -88,63 +89,74 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   const handleDirection = async (type, address) => {
     try {
-      // Request location permission for Android
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: "Location Permission",
-            message: "This app needs access to your location to show directions.",
-            buttonNeutral: "Ask Me Later",
-            buttonNegative: "Cancel",
-            buttonPositive: "OK"
-          }
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('Permission Denied', 'Location permission is required to show directions.');
-          return;
+      let destinationAddress = '';
+      let destinationName = '';
+      let coordinates = null;
+      
+      if (type === 'customer') {
+        destinationAddress = orderDetails?.shippingAddress?.address || 
+                           orderDetails?.shippingAddress?.address1 || 
+                           address || 
+                           'Customer Address';
+        destinationName = orderDetails?.user?.name || 
+                         orderDetails?.shippingAddress?.name || 
+                         'Customer';
+        
+        // Use userLocation coordinates if available
+        if (orderDetails?.userLocation?.latitude && orderDetails?.userLocation?.longitude) {
+          coordinates = {
+            latitude: orderDetails.userLocation.latitude,
+            longitude: orderDetails.userLocation.longitude
+          };
         }
+      } else if (type === 'restaurant') {
+        destinationAddress = orderDetails?.store?.address || 
+                           orderDetails?.store?.ShopAddress?.address || 
+                           address || 
+                           'Restaurant Address';
+        destinationName = orderDetails?.store?.name || 'Restaurant';
       }
 
-      // Get current location
-      Geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude: currentLat, longitude: currentLng } = position.coords;
-          
-          // Get destination coordinates based on type
-          let destLat, destLng;
-          
-          if (type === 'customer') {
-            destLat = orderDetails?.shippingAddress?.latitude;
-            destLng = orderDetails?.shippingAddress?.longitude;
-          } else if (type === 'restaurant') {
-            destLat = orderDetails?.store?.ShopAddress?.latitude;
-            destLng = orderDetails?.store?.ShopAddress?.longitude;
-          }
+      if (!destinationAddress && !coordinates) {
+        Alert.alert('Error', 'Destination address not available');
+        return;
+      }
 
-          if (!destLat || !destLng) {
-            Alert.alert('Error', 'Destination coordinates not available');
-            return;
-          }
-
-          // Navigate to in-app map component
-          navigation.navigate('MapScreen', { 
-            originLat: currentLat,
-            originLng: currentLng,
-            destinationLat: destLat,
-            destinationLng: destLng,
-            destinationName: type === 'customer' ? orderDetails?.shippingAddress?.address : orderDetails?.store?.name
-          });
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          Alert.alert('Error', 'Could not get your current location');
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-      );
+      let mapsUrl = '';
+      
+      if (coordinates) {
+        // Use coordinates for more accurate navigation
+        mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${coordinates.latitude},${coordinates.longitude}`;
+      } else {
+        // Fallback to address-based navigation
+        const encodedAddress = encodeURIComponent(destinationAddress);
+        mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+      }
+      
+      // Check if the URL can be opened
+      const canOpen = await Linking.canOpenURL(mapsUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(mapsUrl);
+      } else {
+        // Fallback to Apple Maps on iOS or try alternative
+        let fallbackUrl = '';
+        if (coordinates) {
+          fallbackUrl = Platform.OS === 'ios' 
+            ? `http://maps.apple.com/?daddr=${coordinates.latitude},${coordinates.longitude}`
+            : `geo:${coordinates.latitude},${coordinates.longitude}`;
+        } else {
+          const encodedAddress = encodeURIComponent(destinationAddress);
+          fallbackUrl = Platform.OS === 'ios' 
+            ? `http://maps.apple.com/?q=${encodedAddress}`
+            : `geo:0,0?q=${encodedAddress}`;
+        }
+        
+        await Linking.openURL(fallbackUrl);
+      }
     } catch (error) {
       console.error('Error in handleDirection:', error);
-      Alert.alert('Error', 'Failed to open directions');
+      Alert.alert('Error', 'Failed to open directions. Please check if you have a maps app installed.');
     }
   };
 
@@ -216,11 +228,11 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={branding.primaryColor} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#F16122" />
-          <Text style={styles.loadingText}>Loading order details...</Text>
+          <ActivityIndicator size="large" color={branding.primaryColor} />
+          <Text style={[styles.loadingText, { color: branding.textColor }]}>Loading order details...</Text>
         </View>
       </SafeAreaView>
     );
@@ -228,17 +240,17 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   if (!orderDetails) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={branding.primaryColor} />
         <View style={styles.errorContainer}>
-          <Icon name="alert-circle-outline" size={64} color="#EF4444" />
-          <Text style={styles.errorText}>No order details found</Text>
+          <Icon name="alert-circle-outline" size={64} color={branding.primaryColor} />
+          <Text style={[styles.errorText, { color: branding.textColor }]}>No order details found</Text>
           <TouchableOpacity 
-            style={styles.retryButton}
+            style={[styles.retryButton, { backgroundColor: branding.primaryColor }]}
             onPress={fetchOrderDetails}
           >
-            <Icon name="refresh" size={20} color="#FFFFFF" />
-            <Text style={styles.retryButtonText}>Retry</Text>
+            <Icon name="refresh" size={20} color={branding.whiteColorText} />
+            <Text style={[styles.retryButtonText, { color: branding.whiteColorText }]}>Retry</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -248,56 +260,64 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const orderStatus = getOrderStatus(orderDetails?.status);
 
   // Debugging logs for orderDetails and items before totalAmount calculation
-  console.log("Debugging: orderDetails before totalAmount:", orderDetails);
-  console.log("Debugging: orderDetails.items before totalAmount:", orderDetails?.items);
+  //console.log("Debugging: orderDetails before totalAmount:", orderDetails);
+  //console.log("Debugging: orderDetails.items before totalAmount:", orderDetails?.items);
 
   const totalAmount = (orderDetails?.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  console.log("Debugging: Calculated totalAmount:", totalAmount);
+  //console.log("Debugging: Calculated totalAmount:", totalAmount);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={branding.primaryColor} />
       
       {/* Enhanced Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: branding.backgroundColor, borderBottomColor: branding.secondaryBackground }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#111" />
+          <Icon name="arrow-back" size={24} color={branding.textColor} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Order #{orderId?.slice(-6)}</Text>
+          <Text style={[styles.headerTitle, { color: branding.textColor }]}>Order #{orderId?.slice(-6)}</Text>
           <View style={[styles.statusBadge, { backgroundColor: orderStatus.color }]}>
-            <Text style={styles.statusText}>{orderStatus.text}</Text>
+            <Text style={[styles.statusText, { color: branding.whiteColorText }]}>{orderStatus.text}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.refreshButton} onPress={fetchOrderDetails}>
-          <Icon name="refresh" size={20} color="#6B7280" />
+          <Icon name="refresh" size={20} color={branding.textColor} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Order Summary Card */}
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, { backgroundColor: branding.backgroundColor }]}>
           <View style={styles.summaryHeader}>
-            <Text style={styles.summaryTitle}>Order Summary</Text>
-            <Text style={styles.summaryAmount}>{formatPrice(totalAmount)}</Text>
+            <View style={styles.summaryTitleContainer}>
+              <Text style={[styles.summaryTitle, { color: branding.textColor }]}>Order Summary</Text>
+              {orderDetails?.userLocation?.latitude && (
+                <View style={[styles.gpsBadge, { backgroundColor: branding.cartDiscountColor }]}>
+                  <Icon name="location" size={12} color={branding.whiteColorText} />
+                  <Text style={[styles.gpsBadgeText, { color: branding.whiteColorText }]}>GPS</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.summaryAmount, { color: branding.primaryColor }]}>{formatPrice(totalAmount)}</Text>
           </View>
           <View style={styles.summaryDetails}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Payment Method:</Text>
-              <View style={styles.paymentBadge}>
-                <Text style={styles.paymentText}>{orderDetails?.paymentInfo?.type || 'COD'}</Text>
+              <Text style={[styles.summaryLabel, { color: branding.textColor }]}>Payment Method:</Text>
+              <View style={[styles.paymentBadge, { backgroundColor: branding.primaryColor }]}>
+                <Text style={[styles.paymentText, { color: branding.whiteColorText }]}>{orderDetails?.paymentInfo?.type || 'COD'}</Text>
               </View>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Items:</Text>
-              <Text style={styles.summaryValue}>{(orderDetails?.items?.length || 0)}</Text>
+              <Text style={[styles.summaryLabel, { color: branding.textColor }]}>Items:</Text>
+              <Text style={[styles.summaryValue, { color: branding.textColor }]}>{(orderDetails?.items?.length || 0)}</Text>
             </View>
           </View>
         </View>
 
         {/* Restaurant Details */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             <Icon name="storefront" size={16} color="#6B7280" /> Store Details
           </Text>
@@ -320,7 +340,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               </View>
               <View style={styles.detailInfo}>
                 <Text style={styles.detailName}>
-                  {orderDetails?.store?.name || 'Restaurant Name'}
+                  {orderDetails?.store?.name || 'Shop Name'}
                 </Text>
                 <Text style={styles.detailSubtext} numberOfLines={2}>
                   {orderDetails?.store?.address || 'Address not available'}
@@ -344,48 +364,148 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </View> */}
 
         {/* Customer Contact Details */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            <Icon name="person" size={16} color="#6B7280" /> Customer Details
+          <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
+            <Icon name="person" size={16} color={branding.textColor} /> Customer Details
           </Text>
-          <View style={styles.detailCard}>
+          <View style={[styles.detailCard, { backgroundColor: branding.backgroundColor }]}>
             <View style={styles.detailHeader}>
               <View style={styles.avatarContainer}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
+                <View style={[styles.avatar, { backgroundColor: branding.primaryColor }]}>
+                  <Text style={[styles.avatarText, { color: branding.whiteColorText }]}>
                     {orderDetails?.user?.name?.charAt(0) || 'C'}
                   </Text>
                 </View>
               </View>
               <View style={styles.detailInfo}>
-                <Text style={styles.detailName}>
-                  {orderDetails?.user?.name || 'Customer Name'}
+                <Text style={[styles.detailName, { color: branding.textColor }]}>
+                  {orderDetails?.user?.name || orderDetails?.shippingAddress?.name || 'Customer Name'}
                 </Text>
-                <Text style={styles.detailSubtext} numberOfLines={2}>
-                  {orderDetails?.shippingAddress?.address || 'Address not available'}
+                <Text style={[styles.detailSubtext, { color: branding.textColor }]} numberOfLines={2}>
+                  {orderDetails?.userLocation?.deliveryAddress || 
+                   orderDetails?.shippingAddress?.address || 
+                   orderDetails?.shippingAddress?.address1 || 
+                   'Address not available'}
                 </Text>
-                {orderDetails?.user?.phone && (
-                  <Text style={styles.phoneText}>{orderDetails.user.phone}</Text>
+                {(orderDetails?.user?.phoneNumber || orderDetails?.user?.phone || orderDetails?.shippingAddress?.phone) && (
+                  <Text style={[styles.phoneText, { color: branding.primaryColor }]}>
+                    {orderDetails?.user?.phoneNumber || orderDetails?.user?.phone || orderDetails?.shippingAddress?.phone}
+                  </Text>
+                )}
+                {orderDetails?.user?.email && (
+                  <Text style={[styles.emailText, { color: branding.textColor }]}>{orderDetails.user.email}</Text>
                 )}
               </View>
             </View>
+            
+            {/* Enhanced Customer Information */}
+            <View style={[styles.customerInfoContainer, { backgroundColor: branding.secondaryBackground }]}>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: branding.textColor }]}>Name:</Text>
+                <Text style={[styles.infoValue, { color: branding.textColor }]}>
+                  {orderDetails?.user?.name || orderDetails?.shippingAddress?.name || 'N/A'}
+                </Text>
+              </View>
+              
+              {orderDetails?.user?.email && (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: branding.textColor }]}>Email:</Text>
+                  <Text style={[styles.infoValue, { color: branding.textColor }]}>{orderDetails.user.email}</Text>
+                </View>
+              )}
+              
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: branding.textColor }]}>Phone:</Text>
+                <Text style={[styles.infoValue, { color: branding.textColor }]}>
+                  {orderDetails?.shippingAddress?.phone || 'N/A'}
+                </Text>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: branding.textColor }]}>Address:</Text>
+                <Text style={[styles.infoValue, { color: branding.textColor }]}>
+                  {orderDetails?.shippingAddress?.address || orderDetails?.shippingAddress?.address1 || 'N/A'}
+                </Text>
+              </View>
+              
+              {orderDetails?.shippingAddress?.locality && (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: branding.textColor }]}>Locality:</Text>
+                  <Text style={[styles.infoValue, { color: branding.textColor }]}>{orderDetails.shippingAddress.locality}</Text>
+                </View>
+              )}
+              
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: branding.textColor }]}>City:</Text>
+                <Text style={[styles.infoValue, { color: branding.textColor }]}>
+                  {orderDetails?.shippingAddress?.city || 'N/A'}
+                </Text>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: branding.textColor }]}>State:</Text>
+                <Text style={[styles.infoValue, { color: branding.textColor }]}>
+                  {orderDetails?.shippingAddress?.state || orderDetails?.shippingAddress?.country || 'N/A'}
+                </Text>
+              </View>
+              
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: branding.textColor }]}>Pincode:</Text>
+                <Text style={[styles.infoValue, { color: branding.textColor }]}>
+                  {orderDetails?.shippingAddress?.pincode || orderDetails?.shippingAddress?.zipCode || 'N/A'}
+                </Text>
+              </View>
+              
+              {orderDetails?.shippingAddress?.addressType && (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: branding.textColor }]}>Address Type:</Text>
+                  <Text style={[styles.infoValue, { color: branding.textColor, textTransform: 'capitalize' }]}>
+                    {orderDetails.shippingAddress.addressType}
+                  </Text>
+                </View>
+              )}
+              
+              {orderDetails?.userLocation?.latitude && orderDetails?.userLocation?.longitude && (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: branding.textColor }]}>Coordinates:</Text>
+                  <Text style={[styles.infoValue, { color: branding.textColor }]}>
+                    {orderDetails.userLocation.latitude.toFixed(6)}, {orderDetails.userLocation.longitude.toFixed(6)}
+                  </Text>
+                </View>
+              )}
+              
+              {orderDetails?.userLocation?.deliveryAddress && (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: branding.textColor }]}>Delivery Address:</Text>
+                  <Text style={[styles.infoValue, { color: branding.textColor }]}>
+                    {orderDetails.userLocation.deliveryAddress}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
             <View style={styles.actionButtons}>
               <TouchableOpacity 
-                style={[styles.actionButton, styles.callButton]}
-                onPress={() => handleCall('customer', orderDetails?.user?.phone)}
+                style={[styles.actionButton, styles.callButton, { backgroundColor: branding.secondaryBackground }]}
+                onPress={() => handleCall('customer', orderDetails?.shippingAddress?.phone)}
               >
-                <Icon name="call" size={16} color="#F16122" />
-                <Text style={styles.callText}>Call</Text>
+                <Icon name="call" size={16} color={branding.primaryColor} />
+                <Text style={[styles.callText, { color: branding.primaryColor }]}>Call</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.actionButton, styles.directionButton]}
+                style={[styles.actionButton, styles.directionButton, { backgroundColor: branding.secondaryBackground }]}
                 onPress={() => handleDirection('customer', orderDetails?.shippingAddress?.address)}
               >
-                <Icon name="navigate" size={16} color="#3B82F6" />
-                <Text style={styles.directionText}>Direction</Text>
+                <Icon name="navigate" size={16} color={branding.primaryColor} />
+                <Text style={[styles.directionText, { color: branding.primaryColor }]}>
+                  {orderDetails?.userLocation?.latitude ? 'GPS Direction' : 'Direction'}
+                </Text>
+                {orderDetails?.userLocation?.latitude && (
+                  <Icon name="location" size={12} color={branding.cartDiscountColor} style={{ marginLeft: 4 }} />
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -393,12 +513,12 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
         {/* Items */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            <Icon name="restaurant" size={16} color="#6B7280" /> Order Items ({(orderDetails?.items || []).length || 0})
+          <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
+            <Icon name="restaurant" size={16} color={branding.textColor} /> Order Items ({(orderDetails?.items || []).length || 0})
           </Text>
 
           {(orderDetails?.items || []).map((item, index) => (
-            <View key={item._id || index} style={styles.itemCard}>
+            <View key={item._id || index} style={[styles.itemCard, { backgroundColor: branding.backgroundColor }]}>
               <View style={styles.itemImageContainer}>
                 {item.image ? (
                   <Image 
@@ -407,26 +527,26 @@ const OrderDetailsScreen = ({ route, navigation }) => {
                     resizeMode="cover"
                   />
                 ) : (
-                  <View style={styles.itemImagePlaceholder}>
-                    <Icon name="fast-food" size={24} color="#9CA3AF" />
+                  <View style={[styles.itemImagePlaceholder, { backgroundColor: branding.secondaryBackground }]}>
+                    <Icon name="fast-food" size={24} color={branding.textColor} />
                   </View>
                 )}
               </View>
               <View style={styles.itemDetails}>
                 <View style={styles.itemHeader}>
-                  <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-                  <View style={styles.quantityBadge}>
-                    <Text style={styles.quantityText}>×{item.quantity}</Text>
+                  <Text style={[styles.itemName, { color: branding.textColor }]} numberOfLines={2}>{item.name}</Text>
+                  <View style={[styles.quantityBadge, { backgroundColor: branding.secondaryBackground }]}>
+                    <Text style={[styles.quantityText, { color: branding.textColor }]}>×{item.quantity}</Text>
                   </View>
                 </View>
-                <Text style={styles.itemPrice}>{formatPrice(item.price * item.quantity)}</Text>
+                <Text style={[styles.itemPrice, { color: branding.primaryColor }]}>{formatPrice(item.price * item.quantity)}</Text>
                 {item.addons && item.addons.length > 0 && (
-                  <Text style={styles.itemAddons} numberOfLines={2}>
+                  <Text style={[styles.itemAddons, { color: branding.textColor }]} numberOfLines={2}>
                     Add-ons: {item.addons.join(', ')}
                   </Text>
                 )}
                 {item.size && (
-                  <Text style={styles.itemSize}>Size: {item.size}</Text>
+                  <Text style={[styles.itemSize, { color: branding.textColor }]}>Size: {item.size}</Text>
                 )}
               </View>
             </View>
@@ -434,7 +554,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         </View>
 
         {/* Additional Note */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             <Icon name="document-text" size={16} color="#6B7280" /> Delivery Instructions
           </Text>
@@ -448,22 +568,22 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               placeholderTextColor="#9CA3AF"
             />
           </View>
-        </View>
+        </View> */}
 
         {/* Enhanced Confirmation Button */}
         <TouchableOpacity 
-          style={styles.confirmButton}
+          style={[styles.confirmButton, { backgroundColor: branding.primaryColor }]}
           onPress={handleSwipeConfirmation}
           activeOpacity={0.8}
         >
           <View style={styles.confirmContent}>
             {isConfirming ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={branding.whiteColorText} />
             ) : (
-              <Icon name="checkmark-circle" size={24} color="#FFFFFF" />
+              <Icon name="checkmark-circle" size={24} color={branding.whiteColorText} />
             )}
-            <Text style={styles.confirmText}>Confirm Order Delivery</Text>
-            {!isConfirming && <Icon name="arrow-forward" size={20} color="#FFFFFF" />}
+            <Text style={[styles.confirmText, { color: branding.whiteColorText }]}>Confirm Order Delivery</Text>
+            {!isConfirming && <Icon name="arrow-forward" size={20} color={branding.whiteColorText} />}
           </View>
         </TouchableOpacity>
 
@@ -478,33 +598,33 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         onRequestClose={() => setIsOtpModalVisible(false)}
       >
         <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Enter OTP</Text>
+          <View style={[styles.modalView, { backgroundColor: branding.backgroundColor }]}>
+            <Text style={[styles.modalTitle, { color: branding.textColor }]}>Enter OTP</Text>
             <TextInput
-              style={styles.otpInput}
+              style={[styles.otpInput, { borderColor: branding.secondaryBackground, color: branding.textColor }]}
               keyboardType="numeric"
               maxLength={6}
               value={enteredOtp}
               onChangeText={setEnteredOtp}
               placeholder="_ _ _ _ _ _"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={branding.textColor}
             />
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[styles.modalButton, styles.cancelButton, { backgroundColor: branding.cartDeleteColor }]}
                 onPress={() => setIsOtpModalVisible(false)}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <Text style={[styles.buttonText, { color: branding.whiteColorText }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.confirmOtpButton]}
+                style={[styles.modalButton, styles.confirmOtpButton, { backgroundColor: branding.primaryColor }]}
                 onPress={confirmDeliveryWithOtp}
                 disabled={isConfirming}
               >
                 {isConfirming ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={branding.whiteColorText} />
                 ) : (
-                  <Text style={styles.buttonText}>Confirm</Text>
+                  <Text style={[styles.buttonText, { color: branding.whiteColorText }]}>Confirm</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -520,7 +640,6 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   header: {
     flexDirection: 'row',
@@ -528,9 +647,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -548,7 +665,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 4,
   },
   statusBadge: {
@@ -557,7 +673,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusText: {
-    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -571,7 +686,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     marginTop: 16,
@@ -587,15 +701,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  summaryTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   summaryTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+  },
+  gpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 2,
+  },
+  gpsBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   summaryAmount: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#F16122',
   },
   summaryDetails: {
     gap: 12,
@@ -607,22 +736,18 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '500',
   },
   summaryValue: {
     fontSize: 14,
-    color: '#1F2937',
     fontWeight: '600',
   },
   paymentBadge: {
-    backgroundColor: '#F16122',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 16,
   },
   paymentText: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -632,13 +757,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#374151',
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
   },
   detailCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -663,13 +786,11 @@ const styles = StyleSheet.create({
   logoPlaceholder: {
     width: 56,
     height: 56,
-    backgroundColor: '#F16122',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoText: {
-    color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '700',
   },
@@ -679,13 +800,11 @@ const styles = StyleSheet.create({
   avatar: {
     width: 56,
     height: 56,
-    backgroundColor: '#10B981',
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '700',
   },
@@ -695,19 +814,46 @@ const styles = StyleSheet.create({
   detailName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 4,
   },
   detailSubtext: {
     fontSize: 14,
-    color: '#6B7280',
     lineHeight: 20,
   },
   phoneText: {
     fontSize: 14,
-    color: '#3B82F6',
     marginTop: 4,
     fontWeight: '500',
+  },
+  emailText: {
+    fontSize: 14,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  customerInfoContainer: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 2,
+    textAlign: 'right',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -722,27 +868,22 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   callButton: {
-    backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FECACA',
   },
   directionButton: {
-    backgroundColor: '#EFF6FF',
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },
   callText: {
-    color: '#F16122',
     fontSize: 14,
     fontWeight: '600',
   },
   directionText: {
-    color: '#3B82F6',
     fontSize: 14,
     fontWeight: '600',
   },
   itemCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
@@ -764,7 +905,6 @@ const styles = StyleSheet.create({
   itemImagePlaceholder: {
     width: 72,
     height: 72,
-    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -784,12 +924,10 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
     flex: 1,
     marginRight: 8,
   },
   quantityBadge: {
-    backgroundColor: '#F3F4F6',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -797,27 +935,22 @@ const styles = StyleSheet.create({
   quantityText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
   },
   itemPrice: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#F16122',
     marginBottom: 4,
   },
   itemAddons: {
     fontSize: 12,
-    color: '#6B7280',
     marginBottom: 2,
     fontStyle: 'italic',
   },
   itemSize: {
     fontSize: 12,
-    color: '#6B7280',
     fontWeight: '500',
   },
   noteContainer: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#E5E7EB',
@@ -826,13 +959,11 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     fontSize: 14,
-    color: '#374151',
     textAlignVertical: 'top',
     minHeight: 80,
     lineHeight: 20,
   },
   confirmButton: {
-    backgroundColor: '#F16122',
     borderRadius: 16,
     paddingVertical: 18,
     marginTop: 32,
@@ -849,7 +980,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   confirmText: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
   },
@@ -857,12 +987,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#6B7280',
     fontWeight: '500',
   },
   errorContainer: {
@@ -870,17 +998,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#F8FAFC',
   },
   errorText: {
     fontSize: 18,
-    color: '#6B7280',
     marginBottom: 32,
     textAlign: 'center',
     fontWeight: '500',
   },
   retryButton: {
-    backgroundColor: '#F16122',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -889,7 +1014,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   retryButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -901,7 +1025,6 @@ const styles = StyleSheet.create({
   },
   modalView: {
     margin: 20,
-    backgroundColor: 'white',
     borderRadius: 20,
     padding: 35,
     alignItems: 'center',
@@ -919,18 +1042,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1F2937',
   },
   otpInput: {
     width: 150,
     height: 50,
-    borderColor: '#D1D5DB',
     borderWidth: 2,
     borderRadius: 10,
     textAlign: 'center',
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
     letterSpacing: 8,
     marginBottom: 20,
   },
@@ -949,13 +1069,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#EF4444',
   },
   confirmOtpButton: {
-    backgroundColor: '#F16122',
   },
   buttonText: {
-    color: 'white',
     fontWeight: 'bold',
     textAlign: 'center',
     fontSize: 16,

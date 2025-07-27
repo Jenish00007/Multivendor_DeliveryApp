@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { GoogleSignin } from '@react-native-google-signin/google-signin'
 import * as Google from 'expo-auth-session/providers/google'
 import * as AuthSession from 'expo-auth-session'
+import { useAppBranding } from '../../utils/translationHelper'
 
 const LOGIN = gql`
   ${login}
@@ -34,6 +35,7 @@ export const useCreateAccount = () => {
   const themeContext = useContext(ThemeContext)
   const [user, setUser] = useState('')
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const {
     IOS_CLIENT_ID_GOOGLE,
     ANDROID_CLIENT_ID_GOOGLE,
@@ -267,7 +269,7 @@ export const useCreateAccount = () => {
   }
   useFocusEffect(() => {
     if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(currentTheme.menuBar)
+      StatusBar.setBackgroundColor(branding.primaryColor)
     }
     StatusBar.setBarStyle(
       themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'

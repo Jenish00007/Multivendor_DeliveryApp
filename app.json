@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Qauds Partner",
+    "name": "Figgo Partner",
     "scheme": "qauds",
     "version": "1.0.0",
     "description": "Ordering app built in React Native using Expo for IOS and Android.",
-    "slug": "figgo",
-    "owner": "fenix_ts",
+    "slug": "akj",
+    "owner": "jenish111",
     "privacy": "public",
     "androidStatusBar": {
       "backgroundColor": "#000000"
@@ -15,10 +15,11 @@
       "android"
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/figgo/icon.png",
     "splash": {
+      "image": "./assets/figgo/splash.png",
       "resizeMode": "cover",
-      "backgroundColor": "#F16122"
+      "backgroundColor": "#F7CA0F"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -27,7 +28,7 @@
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "com.Smartkal.founder",
+      "bundleIdentifier": "com.figgo.partner",
       "config": {
         "googleMapsApiKey": "###### Key #######"
       },
@@ -52,11 +53,11 @@
       "color": "#F16122",
       "icon": "./assets/not-icon.png",
       "androidMode": "default",
-      "androidCollapsedTitle": "Qauds"
+      "androidCollapsedTitle": "Figgo Partner"
     },
     "android": {
-      "versionCode": 10,
-      "package": "com.Smartkal.founder",
+      "versionCode": 1,
+      "package": "com.figgo.partner",
       "googleServicesFile": "./google-services.json",
       "userInterfaceStyle": "automatic",
       "config": {
@@ -89,7 +90,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow $Figgo to use your location."
+          "locationAlwaysAndWhenInUsePermission": "Allow Qauds Partner to use your location."
         }
       ]
     ],
@@ -101,7 +102,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "7fbd99a4-d16c-4097-a64a-bb314d514f76"
+        "projectId": "0539d8a7-2c87-4e26-8f95-16389298f630"
       }
     }
   }

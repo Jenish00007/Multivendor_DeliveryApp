@@ -10,14 +10,22 @@ import {
 import { useContext } from 'react';
 import ThemeContext from '../../ui/ThemeContext/ThemeContext';
 import { theme } from '../../utils/themeColors';
+import { useConfiguration } from '../../context/Configuration';
+import { getAppName, getContactEmail } from '../../services/configService';
+import { useAppBranding } from '../../utils/translationHelper';
 
 export default function RefundPolicy() {
   const themeContext = useContext(ThemeContext);
   const currentTheme = theme[themeContext.ThemeValue];
+  const configuration = useConfiguration();
+  const branding = useAppBranding();
+  
+  const appName = getAppName(configuration.config);
+  const contactEmail = getContactEmail(configuration.config);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.themeBackground }]}>
-      <StatusBar backgroundColor="#F16122" barStyle="dark-content" />
+      <StatusBar backgroundColor={branding.primaryColor} barStyle="dark-content" />
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           <Text style={[styles.title, { color: currentTheme.fontMainColor }]}>
@@ -32,11 +40,15 @@ export default function RefundPolicy() {
             1. Refund Eligibility
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-          Qauds offers refunds under the following circumstances:
-            • Incorrect or damaged items received
-            • Missing items from your order
-            • Quality issues with received products
-            • Service not provided as described
+            {appName} offers refunds under the following circumstances:
+          </Text>
+          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
+            • Order cancellation before preparation begins{'\n'}
+            • Incorrect or missing items in your order{'\n'}
+            • Quality issues with delivered food{'\n'}
+            • Delivery delays exceeding 30 minutes{'\n'}
+            • Technical errors in payment processing{'\n'}
+            • Restaurant closure or unavailability
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
@@ -44,17 +56,26 @@ export default function RefundPolicy() {
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
             To request a refund:
-            1. Contact our customer support within 24 hours of delivery
-            2. Provide order details and reason for refund
-            3. Submit clear photos if applicable
-            4. Wait for our team to review your request
+          </Text>
+          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
+            1. Contact our customer support within 24 hours of order completion{'\n'}
+            2. Provide your order number and reason for refund{'\n'}
+            3. Submit any relevant photos or documentation{'\n'}
+            4. Our team will review your request within 48 hours{'\n'}
+            5. Approved refunds will be processed within 5-7 business days
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
-            3. Refund Timeline
+            3. Refund Methods
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            Once approved, refunds will be processed within 5-7 business days. The time for the refund to appear in your account depends on your payment method and financial institution.
+            Refunds will be issued through the original payment method:
+          </Text>
+          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
+            • Credit/Debit Cards: 5-7 business days{'\n'}
+            • Digital Wallets: 2-3 business days{'\n'}
+            • Bank Transfers: 3-5 business days{'\n'}
+            • Cash on Delivery: Credit to your account
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
@@ -62,31 +83,27 @@ export default function RefundPolicy() {
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
             The following are not eligible for refunds:
-            • Completed service orders
-            • Perishable items
-            • Customized products
-            • Items marked as non-refundable
+          </Text>
+          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
+            • Orders cancelled after preparation begins{'\n'}
+            • Change of mind after delivery{'\n'}
+            • Incorrect delivery address provided by customer{'\n'}
+            • Customer unavailability at delivery time{'\n'}
+            • Delivery fees and service charges
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
             5. Partial Refunds
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            Partial refunds may be offered in cases where only part of the order is affected or when service delivery was partially completed.
+            In cases where only part of your order is affected, we may offer partial refunds for the specific items or services that were problematic.
           </Text>
 
           <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
-            6. Cancellation Refunds
+            6. Contact Us
           </Text>
           <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            Orders cancelled before processing or shipping will be refunded in full. Orders cancelled after processing may be subject to cancellation fees.
-          </Text>
-
-          <Text style={[styles.sectionTitle, { color: currentTheme.fontMainColor }]}>
-            7. Contact Us
-          </Text>
-          <Text style={[styles.paragraph, { color: currentTheme.fontSecondColor }]}>
-            For any questions about our refund policy, please contact our customer support team at refunds@Qauds.com
+            For any questions about our refund policy, please contact our customer support team at {contactEmail}
           </Text>
         </View>
       </ScrollView>

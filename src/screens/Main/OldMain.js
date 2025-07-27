@@ -52,6 +52,7 @@ import React, {
   import { useTranslation } from 'react-i18next'
 
   import { escapeRegExp } from '../../utils/regex'
+  import { useAppBranding } from '../../utils/translationHelper'
   
   const RESTAURANTS = gql`
     ${restaurantList}
@@ -72,6 +73,7 @@ import React, {
     const navigation = useNavigation()
     const themeContext = useContext(ThemeContext)
     const currentTheme = theme[themeContext.ThemeValue]
+    const branding = useAppBranding()
     const { getCurrentLocation } = useLocation()
   
     const { data, refetch, networkStatus, loading, error } = useQuery(
@@ -98,7 +100,7 @@ import React, {
   
     useFocusEffect(() => {
       if (Platform.OS === 'android') {
-        StatusBar.setBackgroundColor(currentTheme.headerColor)
+        StatusBar.setBackgroundColor(branding.primaryColor)
       }
       StatusBar.setBarStyle(
         themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'

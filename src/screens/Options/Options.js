@@ -24,6 +24,7 @@ import ThemeContext from '../../ui/ThemeContext/ThemeContext';
 import RadioButton from '../../ui/FdRadioBtn/RadioBtn';
 import i18next from '../../../i18next';
 import { useTranslation } from 'react-i18next';
+import { useAppBranding } from '../../utils/translationHelper';
 
 // Define languageTypes before using it in state
 const languageTypes = [
@@ -41,11 +42,11 @@ const languageTypes = [
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { formetedProfileData, logout } = useContext(UserContext);
+  const { formetedProfileData, logout, isDeliveryMan } = useContext(UserContext);
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
   const { t } = useTranslation();
-  
+  const branding = useAppBranding();
 
   // Get styles with theme colors
   const styles = OptionsStyles(currentTheme);
@@ -60,7 +61,6 @@ export default function SettingsScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [activeRadio, activeRadioSetter] = useState(languageTypes[0].index);
   const [loadinglang, setLoadingLang] = useState(false);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   useEffect(() => {
     selectLanguage();
@@ -98,6 +98,26 @@ export default function SettingsScreen() {
     }
   }
 
+  // Format phone number for display
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return '';
+    
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // Format based on length
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    } else if (cleaned.length > 10) {
+      // For international numbers, just add + prefix
+      return `+${cleaned}`;
+    }
+    
+    return phone; // Return original if no formatting applies
+  };
+
   // Handle logout
   const handleLogout = async () => {
     const success = await logout();
@@ -113,7 +133,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.themeBackground }]}>
       
         <StatusBar 
-          backgroundColor="#F16122" 
+          backgroundColor={branding.primaryColor} 
           barStyle="dark-content"
         />
         
@@ -132,9 +152,9 @@ export default function SettingsScreen() {
                 source={{
                   uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
                 }}
-                style={[styles.profileAvatar, { borderColor: currentTheme.primary }]} />
+                style={[styles.profileAvatar, { borderColor: branding.primaryColor }]} />
 
-              <View style={[styles.profileAction, { backgroundColor: currentTheme.primary, borderColor: currentTheme.itemCardColor }]}>
+              <View style={[styles.profileAction, { backgroundColor: branding.primaryColor, borderColor: currentTheme.itemCardColor }]}>
                 <FeatherIcon color="#fff" name="edit-3" size={15} />
               </View>
             </View>
@@ -151,7 +171,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: currentTheme.fontSecondColor }]}>General</Text>
 
           <View style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
+            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
               <FeatherIcon color="#fff" name="mail" size={20} />
             </View>
 
@@ -163,23 +183,32 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          <View style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Profile")}
+            style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
+            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
               <FeatherIcon color="#fff" name="phone" size={20} />
             </View>
 
             <View style={styles.detailContainer}>
               <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Phone Number</Text>
               <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
-                {formetedProfileData?.phone || 'Add phone number'}
+                {formetedProfileData?.phone || formetedProfileData?.phoneNumber ? 
+                  formatPhoneNumber(formetedProfileData.phone || formetedProfileData.phoneNumber) : 
+                  'Add phone number'}
               </Text>
             </View>
-          </View>
+
+            <FeatherIcon
+              color={currentTheme.fontSecondColor}
+              name="chevron-right"
+              size={20} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => navigation.navigate("Addresses")}
             style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
+            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
               <FeatherIcon color="#fff" name="map-pin" size={20} />
             </View>
 
@@ -197,11 +226,11 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Preferences Section */}
+        {/* Preferences Section 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.fontSecondColor }]}>Preferences</Text>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => setLanguageModalVisible(true)}
             style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
             <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
@@ -218,7 +247,7 @@ export default function SettingsScreen() {
               color={currentTheme.fontSecondColor}
               name="chevron-right"
               size={20} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* <View style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
             <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
@@ -270,9 +299,9 @@ export default function SettingsScreen() {
                 setForm({ ...form, pushNotifications })
               }
               value={form.pushNotifications} />
-          </View> */}
+          </View> 
         </View>
-
+        */}
         
         {/* Help & Support Section with updated content */}
         <View style={styles.section}>
@@ -284,7 +313,7 @@ export default function SettingsScreen() {
           <TouchableOpacity 
             onPress={() => navigation.navigate('TermsAndConditions')}
             style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
+            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
               <FeatherIcon color="#fff" name="file-text" size={20} />
             </View>
             <View style={styles.detailContainer}>
@@ -297,73 +326,81 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           {/* Privacy Policy with content */}
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('PrivacyPolicy')}
-            style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
-              <FeatherIcon color="#fff" name="shield" size={20} />
-            </View>
-            <View style={styles.detailContainer}>
-              <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Privacy Policy</Text>
-              <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
-                Learn how we protect your data
-              </Text>
-            </View>
-            <FeatherIcon color={currentTheme.fontSecondColor} name="chevron-right" size={20} />
-          </TouchableOpacity>
+          {!isDeliveryMan && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('PrivacyPolicy')}
+              style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
+              <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
+                <FeatherIcon color="#fff" name="shield" size={20} />
+              </View>
+              <View style={styles.detailContainer}>
+                <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Privacy Policy</Text>
+                <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
+                  Learn how we protect your data
+                </Text>
+              </View>
+              <FeatherIcon color={currentTheme.fontSecondColor} name="chevron-right" size={20} />
+            </TouchableOpacity>
+          )}
 
           {/* Refund Policy */}
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('RefundPolicy')}
-            style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
-              <FeatherIcon color="#fff" name="refresh-cw" size={20} />
-            </View>
-            <View style={styles.detailContainer}>
-              <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Refund Policy</Text>
-              <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
-                View our refund policy
-              </Text>
-            </View>
-            <FeatherIcon color={currentTheme.fontSecondColor} name="chevron-right" size={20} />
-          </TouchableOpacity>
+          {!isDeliveryMan && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('RefundPolicy')}
+              style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
+              <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
+                <FeatherIcon color="#fff" name="refresh-cw" size={20} />
+              </View>
+              <View style={styles.detailContainer}>
+                <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Refund Policy</Text>
+                <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
+                  View our refund policy
+                </Text>
+              </View>
+              <FeatherIcon color={currentTheme.fontSecondColor} name="chevron-right" size={20} />
+            </TouchableOpacity>
+          )}
 
           {/* Cancellation Policy */}
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('CancellationPolicy')}
-            style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
-              <FeatherIcon color="#fff" name="x-circle" size={20} />
-            </View>
-            <View style={styles.detailContainer}>
-              <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Cancellation Policy</Text>
-              <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
-                View our cancellation policy
-              </Text>
-            </View>
-            <FeatherIcon color={currentTheme.fontSecondColor} name="chevron-right" size={20} />
-          </TouchableOpacity>
+          {!isDeliveryMan && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('CancellationPolicy')}
+              style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
+              <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
+                <FeatherIcon color="#fff" name="x-circle" size={20} />
+              </View>
+              <View style={styles.detailContainer}>
+                <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Cancellation Policy</Text>
+                <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
+                  View our cancellation policy
+                </Text>
+              </View>
+              <FeatherIcon color={currentTheme.fontSecondColor} name="chevron-right" size={20} />
+            </TouchableOpacity>
+          )}
 
           {/* Shipping Policy */}
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('ShippingPolicy')}
-            style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
-              <FeatherIcon color="#fff" name="truck" size={20} />
-            </View>
-            <View style={styles.detailContainer}>
-              <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Shipping Policy</Text>
-              <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
-                View our shipping policy
-              </Text>
-            </View>
-            <FeatherIcon color={currentTheme.fontSecondColor} name="chevron-right" size={20} />
-          </TouchableOpacity>
+          {!isDeliveryMan && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('ShippingPolicy')}
+              style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
+              <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
+                <FeatherIcon color="#fff" name="truck" size={20} />
+              </View>
+              <View style={styles.detailContainer}>
+                <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Shipping Policy</Text>
+                <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
+                  View our shipping policy
+                </Text>
+              </View>
+              <FeatherIcon color={currentTheme.fontSecondColor} name="chevron-right" size={20} />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity 
             style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}
             onPress={() => navigation.navigate('Help')}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
+            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
               <FeatherIcon color="#fff" name="help-circle" size={20} />
             </View>
             <View style={styles.detailContainer}>
@@ -378,7 +415,7 @@ export default function SettingsScreen() {
           <TouchableOpacity 
             style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}
             onPress={() => navigation.navigate('About')}>
-            <View style={[styles.rowIcon, { backgroundColor: currentTheme.primary }]}>
+            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
               <FeatherIcon color="#fff" name="info" size={20} />
             </View>
             <View style={styles.detailContainer}>
@@ -403,19 +440,6 @@ export default function SettingsScreen() {
         >
           <FeatherIcon name="log-out" size={20} color="#FF3B30" />
           <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
-       
-        {/* Delete Account Button */}
-        <TouchableOpacity 
-          style={[
-            styles.accountActionButton, 
-            styles.deleteAccountButton,
-            { backgroundColor: currentTheme === 'dark' ? 'rgba(255, 59, 48, 0.15)' : 'rgba(255, 59, 48, 0.05)' }
-          ]} 
-          onPress={() => setDeleteModalVisible(true)}
-        >
-          <FeatherIcon name="trash-2" size={20} color="#FF3B30" />
-          <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
         </TouchableOpacity>
 
       </ScrollView>

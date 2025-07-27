@@ -23,13 +23,24 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token')
+      // Clear all authentication related data
+      await AsyncStorage.multiRemove([
+        'token',
+        'user',
+        'userType',
+        'deliverymanData',
+        'lastNotificationHandledId'
+      ])
       setToken(null)
+      console.log('Logout successful - all data cleared')
     } catch (error) {
       console.error('Error during logout:', error)
     }
   }
 
+  const isAuthenticated = () => {
+    return !!token
+  }
 
   useEffect(() => {
     let isSubscribed = true
@@ -62,7 +73,8 @@ export const AuthProvider = ({ children }) => {
       setToken, 
       setTokenAsync, 
       logout,
-      isLoading: loading 
+      isLoading: loading,
+      isAuthenticated
     }}>
       {children}
     </AuthContext.Provider>

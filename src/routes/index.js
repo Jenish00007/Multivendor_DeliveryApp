@@ -54,16 +54,83 @@ import ShippingPolicy from '../screens/Policies/ShippingPolicy'
 import Home from '../screens/Delivery_Man/Home'
 import OrderHistoryScreen from '../screens/Delivery_Man/Order_history'
 import DeliveryHome from '../screens/Delivery_Man/Home'
-
+import AuthContext from '../context/Auth'
+import { useAppBranding } from '../utils/translationHelper'
+import { ActivityIndicator, View } from 'react-native'
 
 const NavigationStack = createStackNavigator()
 const MainStack = createStackNavigator()
 const SideDrawer = createDrawerNavigator()
 const Location = createStackNavigator()
+const AuthStack = createStackNavigator()
+
+
+// Authentication Stack - for unauthenticated users
+function AuthStackNavigator() {
+  const themeContext = useContext(ThemeContext)
+  const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding();
+  return (
+    <AuthStack.Navigator
+      screenOptions={screenOptions({
+        theme: themeContext.ThemeValue,
+        headerMenuBackground: branding.primaryColor,
+        backColor: currentTheme.headerBackground,
+        lineColor: currentTheme.horizontalLine,
+        textColor: currentTheme.headerText,
+        iconColor: currentTheme.iconColorPink
+      })}
+    >
+      <AuthStack.Screen 
+        name='Login' 
+        component={Login}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen 
+        name='Register' 
+        component={Register}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen 
+        name='ForgotPassword' 
+        component={ForgotPassword}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen 
+        name='SetYourPassword' 
+        component={SetYourPassword}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen 
+        name='CreateAccount' 
+        component={CreateAccount}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen 
+        name='PhoneNumber' 
+        component={PhoneNumber}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen 
+        name='EmailOtp' 
+        component={EmailOtp}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen 
+        name='PhoneOtp' 
+        component={PhoneOtp}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen 
+        name='ForgotPasswordOtp' 
+        component={ForgotPasswordOtp}
+        options={{ headerShown: false }}
+      />
+    </AuthStack.Navigator>
+  )
+}
 
 function Drawer() {
-
- 
   return (
     <SideDrawer.Navigator drawerContent={(props) => <SideBar {...props} />}>
       <SideDrawer.Screen
@@ -74,6 +141,7 @@ function Drawer() {
     </SideDrawer.Navigator>
   )
 }
+
 function NoDrawer() {
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
@@ -88,8 +156,7 @@ function NoDrawer() {
         iconColor: currentTheme.iconColorPink
       })}
     >
-   
-      <NavigationStack.Screen    options={{ header: () => null }} name='Menu' component={Home} />
+      <NavigationStack.Screen options={{ header: () => null }} name='Menu' component={Home} />
       {<NavigationStack.Screen name='ItemDetail' component={ItemDetail} />}
       <NavigationStack.Screen name='Options' component={Profile} />
       <NavigationStack.Screen name='Addresses' component={Addresses} />
@@ -98,7 +165,6 @@ function NoDrawer() {
       <NavigationStack.Screen name='FullMap' component={FullMap} />
       <NavigationStack.Screen name='Settings' component={Settings} />
       <NavigationStack.Screen options={{ headerShown: false }} name='MyOrders' component={OrderRequestScreen} />
-   
       <NavigationStack.Screen name='Help' component={Help} />
       <NavigationStack.Screen name='HelpBrowser' component={HelpBrowser} />
       <NavigationStack.Screen name='MapScreen' component={MapScreen} />
@@ -108,25 +174,6 @@ function NoDrawer() {
         options={{ header: () => null }}
       />
       <NavigationStack.Screen name='RateAndReview' component={RateAndReview} />
-      {/* Authentication Login */}
-      <NavigationStack.Screen name='CreateAccount' component={CreateAccount} />
-      <NavigationStack.Screen name='Login' component={Login} />
-      <NavigationStack.Screen name='Register' component={Register} />
-      <NavigationStack.Screen name='PhoneNumber' component={PhoneNumber} />
-      <NavigationStack.Screen
-        name='ForgotPassword'
-        component={ForgotPassword}
-      />
-      <NavigationStack.Screen
-        name='SetYourPassword'
-        component={SetYourPassword}
-      />
-      <NavigationStack.Screen name='EmailOtp' component={EmailOtp} />
-      <NavigationStack.Screen name='PhoneOtp' component={PhoneOtp} />
-      <NavigationStack.Screen
-        name='ForgotPasswordOtp'
-        component={ForgotPasswordOtp}
-      />
       <NavigationStack.Screen
         name='SelectLocation'
         component={SelectLocation}
@@ -134,10 +181,8 @@ function NoDrawer() {
       <NavigationStack.Screen name='AddNewAddress' component={AddNewAddress} />
       <NavigationStack.Screen name='SaveAddress' component={SaveAddress} />
       <NavigationStack.Screen options={{ headerShown: false }} name='OrderHistoryScreen' component={OrderHistoryScreen}/>
-      
       <NavigationStack.Screen name='DeliveryTrackingScreen' component={DeliveryTrackingScreen}/>
-      <NavigationStack.Screen name='DeliveryHome' component={DeliveryHome}/>
-    
+      <NavigationStack.Screen options={{ headerShown: false }} name='DeliveryHome' component={DeliveryHome}/>
       <NavigationStack.Screen name='Notification' component={Notification}/>
       <NavigationStack.Screen name='Profile' component={Options}/>
       <NavigationStack.Screen options={{ headerShown: false }} name='OrderDetailsScreen' component={OrderDetailsScreen}/>
@@ -147,7 +192,6 @@ function NoDrawer() {
       <NavigationStack.Screen name='RefundPolicy' component={RefundPolicy} />
       <NavigationStack.Screen name='CancellationPolicy' component={CancellationPolicy} />
       <NavigationStack.Screen name='ShippingPolicy' component={ShippingPolicy} />
-
     </NavigationStack.Navigator>
   )
 }
@@ -167,11 +211,30 @@ function LocationStack() {
   )
 }
 
+// Loading Screen Component
+function LoadingScreen() {
+  const themeContext = useContext(ThemeContext)
+  const currentTheme = theme[themeContext.ThemeValue]
+  
+  return (
+    <View style={{ 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center',
+      backgroundColor: currentTheme.themeBackground 
+    }}>
+      <ActivityIndicator size="large" color={currentTheme.iconColorPink} />
+    </View>
+  )
+}
+
 function AppContainer() {
   const client = useApolloClient()
   const { location } = useContext(LocationContext)
   const { SENTRY_DSN } = useEnvVars()
+  const { token, isLoading } = useContext(AuthContext)
   const lastNotificationResponse = Notifications.useLastNotificationResponse()
+  
   const handleNotification = useCallback(
     async (response) => {
       const { _id } = response.notification.request.content.data
@@ -193,6 +256,7 @@ function AppContainer() {
     },
     [lastNotificationResponse]
   )
+  
   useEffect(() => {
     if (
       lastNotificationResponse &&
@@ -206,16 +270,34 @@ function AppContainer() {
   }, [lastNotificationResponse])
 
   useEffect(() => {
+    // Disable Sentry in development to avoid tracing issues
+    if (__DEV__) {
+      console.log('Sentry disabled in development mode');
+      return;
+    }
+    
     if (SENTRY_DSN) {
       Sentry.init({
         dsn: SENTRY_DSN,
-        environment:"development",
+        environment: "development",
         enableInExpoDevelopment: true,
-        debug:  true,
-        tracesSampleRate: 1.0 // to be changed to 0.2 in production
+        debug: false,
+        tracesSampleRate: 0.0,
+        enableTracing: false,
+        integrations: [
+          new Sentry.ReactNativeTracing({
+            tracingOrigins: ['localhost', '127.0.0.1', /^\//],
+            routingInstrumentation: Sentry.routingInstrumentation,
+          }),
+        ],
       })
     }
   }, [SENTRY_DSN])
+
+  // Show loading screen while checking authentication status
+  if (isLoading) {
+    return <LoadingScreen />
+  }
 
   return (
     <SafeAreaProvider>
@@ -224,12 +306,14 @@ function AppContainer() {
           navigationService.setGlobalRef(ref)
         }}
       >
-        <MainStack.Navigator initialRouteName='Drawer'>
-          <MainStack.Screen
-            options={{ headerShown: false }}
-            name='Drawer'
-            component={Drawer}
-          />
+        <MainStack.Navigator screenOptions={{ headerShown: false }}>
+          {token ? (
+            // User is authenticated - show main app
+            <MainStack.Screen name='Drawer' component={Drawer} />
+          ) : (
+            // User is not authenticated - show auth screens
+            <MainStack.Screen name='Auth' component={AuthStackNavigator} />
+          )}
         </MainStack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

@@ -17,6 +17,7 @@ import { useForgotPassword } from './useForgotPassword'
 import { useTranslation } from 'react-i18next'
 import { Feather } from '@expo/vector-icons'
 import { scale } from '../../utils/scaling'
+import { useAppBranding } from '../../utils/translationHelper'
 
 function ForgotPassword(props) {
   const Analytics = analytics()
@@ -31,6 +32,7 @@ function ForgotPassword(props) {
     loading
   } = useForgotPassword()
   const { t } = useTranslation()
+  const branding = useAppBranding()
   useEffect(() => {
     async function Track() {
       await Analytics.track(Analytics.events.NAVIGATE_TO_FORGOTPASSWORD)
@@ -51,7 +53,7 @@ function ForgotPassword(props) {
   return (
     <SafeAreaView style={styles(currentTheme).safeAreaViewStyles}>
       <StatusBar
-        backgroundColor={currentTheme.themeBackground}
+        backgroundColor={branding.primaryColor}
         barStyle={
           themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'
         }

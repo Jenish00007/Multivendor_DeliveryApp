@@ -15,6 +15,7 @@ import analytics from '../../utils/analytics'
 
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
+import { useAppBranding } from '../../utils/translationHelper'
 
 const datas = [
   {
@@ -70,6 +71,7 @@ function SidebBar(props) {
   const { isLoggedIn, logout } = useContext(UserContext)
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const [modalVisible, setModalVisible] = useState(false)
 
   const handleCancel = () => {
@@ -89,7 +91,7 @@ function SidebBar(props) {
 
   useFocusEffect(() => {
     if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(currentTheme.newheaderColor)
+      StatusBar.setBackgroundColor(branding.primaryColor)
     }
     StatusBar.setBarStyle(
       themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'

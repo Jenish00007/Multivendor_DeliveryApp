@@ -1,5 +1,6 @@
 import React, { useLayoutEffect } from 'react'
 import { View, TouchableOpacity, StatusBar, Image } from 'react-native'
+import { useAppBranding } from '../../../utils/translationHelper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import styles from '../styles'
 import Spinner from '../../../components/Spinner/Spinner'
@@ -29,6 +30,7 @@ function EmailOtp(props) {
 
   const route = useRoute()
   const userData = route.params?.user
+  const branding = useAppBranding()
 
   const { t } = useTranslation()
   useLayoutEffect(() => {
@@ -45,7 +47,7 @@ function EmailOtp(props) {
   return (
     <SafeAreaView style={styles(currentTheme).safeAreaViewStyles}>
       <StatusBar
-        backgroundColor={currentTheme.themeBackground}
+        backgroundColor={branding.primaryColor}
         barStyle={
           themeContext.ThemeValue === 'Dark' ? 'light-content' : 'dark-content'
         }

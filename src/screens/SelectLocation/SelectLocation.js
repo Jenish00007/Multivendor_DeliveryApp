@@ -24,6 +24,7 @@ import { customMapStyle } from '../../utils/customMapStyles'
 import { useTranslation } from 'react-i18next'
 import ModalDropdown from '../../components/Picker/ModalDropdown'
 import Spinner from '../../components/Spinner/Spinner'
+import { useAppBranding } from '../../utils/translationHelper'
 
 const LATITUDE = 33.699265
 const LONGITUDE = 72.974575
@@ -37,6 +38,7 @@ export default function SelectLocation(props) {
   const { longitude, latitude } = props.route.params || {}
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
+  const branding = useAppBranding()
   const navigation = useNavigation()
   const inset = useSafeAreaInsets()
   const [loading, setLoading] = useState(false)
@@ -72,6 +74,7 @@ export default function SelectLocation(props) {
   })
 
   StatusBar.setBarStyle('dark-content')
+  StatusBar.setBackgroundColor(branding.primaryColor)
 
   const setCurrentLocation = async () => {
     setLoading(true)
