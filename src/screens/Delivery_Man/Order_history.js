@@ -23,6 +23,7 @@ const OrderHistoryScreen = () => {
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('processing'); // New state for active tab
   const branding = useAppBranding();
 
   useEffect(() => {
@@ -83,6 +84,117 @@ const OrderHistoryScreen = () => {
       orderId: order.id,
       order: order
     });
+  };
+
+  // Categorize orders by status
+  const categorizeOrders = (ordersList) => {
+    const processing = ordersList.filter(order => 
+      order.status === 'PENDING' || 
+      order.status === 'ACCEPTED' || 
+      order.status === 'ASSIGNED' ||
+      order.status === 'Processing' ||
+      order.status === 'processing'
+    );
+    
+    const outForDelivery = ordersList.filter(order => 
+      order.status === 'PICKED' || 
+      order.status === 'out_for_delivery' ||
+      order.status === 'Out for delivery' ||
+      order.status === 'outForDelivery'
+    );
+    
+    const delivered = ordersList.filter(order => 
+      order.status === 'DELIVERED' || 
+      order.status === 'COMPLETED' ||
+      order.status === 'Delivered' ||
+      order.status === 'delivered'
+    );
+    
+    return { processing, outForDelivery, delivered };
+  };
+
+  // Get orders for current active tab
+  const getCurrentTabOrders = () => {
+    const categorized = categorizeOrders(orderHistory);
+    switch (activeTab) {
+      case 'processing':
+        return categorized.processing;
+      case 'outForDelivery':
+        return categorized.outForDelivery;
+      case 'delivered':
+        return categorized.delivered;
+      default:
+        return categorized.processing;
+    }
+  };
+
+  // Get tab counts
+  const getTabCounts = () => {
+    const categorized = categorizeOrders(orderHistory);
+    return {
+      processing: categorized.processing.length,
+      outForDelivery: categorized.outForDelivery.length,
+      delivered: categorized.delivered.length,
+    };
+  };
+
+  // Tab Navigation Component
+  const TabNavigation = () => {
+    const tabCounts = getTabCounts();
+    
+    const tabs = [
+      { key: 'processing', label: 'Processing', count: tabCounts.processing, icon: 'hourglass-outline' },
+      { key: 'outForDelivery', label: 'Out for Delivery', count: tabCounts.outForDelivery, icon: 'bicycle-outline' },
+      { key: 'delivered', label: 'Delivered', count: tabCounts.delivered, icon: 'checkmark-circle-outline' },
+    ];
+
+    return (
+      <View style={[styles.tabContainer, { backgroundColor: branding.backgroundColor }]}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabScrollContent}
+        >
+          {tabs.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[
+                styles.tab,
+                activeTab === tab.key && styles.activeTab,
+                { 
+                  backgroundColor: activeTab === tab.key ? branding.primaryColor : branding.secondaryBackground,
+                  borderColor: activeTab === tab.key ? branding.primaryColor : branding.secondaryBackground
+                }
+              ]}
+              onPress={() => setActiveTab(tab.key)}
+            >
+              <Icon 
+                name={tab.icon} 
+                size={18} 
+                color={activeTab === tab.key ? branding.whiteColorText : branding.textColor} 
+              />
+              <Text style={[
+                styles.tabLabel,
+                { color: activeTab === tab.key ? branding.whiteColorText : branding.textColor }
+              ]}>
+                {tab.label}
+              </Text>
+              <View style={[
+                styles.tabCount,
+                { backgroundColor: activeTab === tab.key ? branding.whiteColorText : branding.primaryColor }
+              ]}>
+                <Text style={[
+                  styles.tabCountText,
+                  { color: activeTab === tab.key ? branding.primaryColor : branding.whiteColorText }
+                ]}>
+                  {tab.count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
   };
 
   const OrderItem = ({ order }) => (
@@ -161,21 +273,36 @@ const OrderHistoryScreen = () => {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: branding.backgroundColor, borderBottomColor: branding.secondaryBackground }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="white" />
+          <Icon name="arrow-back" size={24} color={branding.textColor} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: 'white' }]}>Order History</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={[styles.headerTitle, { color: branding.textColor }]}>Order History</Text>
+        <TouchableOpacity style={styles.refreshButton} onPress={fetchOrderHistory}>
+          <Icon name="refresh" size={20} color={branding.textColor} />
+        </TouchableOpacity>
       </View>
+
+      {/* Tab Navigation */}
+      <TabNavigation />
 
       {/* Order History List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {orderHistory.length === 0 ? (
+        {getCurrentTabOrders().length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Icon name="receipt-outline" size={48} color={branding.textColor} />
-            <Text style={[styles.emptyText, { color: branding.textColor }]}>No order history found</Text>
+            <Icon 
+              name={
+                activeTab === 'processing' ? 'hourglass-outline' :
+                activeTab === 'outForDelivery' ? 'bicycle-outline' : 'checkmark-circle-outline'
+              } 
+              size={48} 
+              color={branding.textColor} 
+            />
+            <Text style={[styles.emptyText, { color: branding.textColor }]}>
+              {activeTab === 'processing' ? 'No processing orders found' :
+               activeTab === 'outForDelivery' ? 'No out for delivery orders found' : 'No delivered orders found'}
+            </Text>
           </View>
         ) : (
-          orderHistory.map((order) => (
+          getCurrentTabOrders().map((order) => (
             <OrderItem key={order.id} order={order} />
           ))
         )}
@@ -208,6 +335,52 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 34,
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  tabContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  tabScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+    minWidth: 120,
+  },
+  activeTab: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tabCount: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  tabCountText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,

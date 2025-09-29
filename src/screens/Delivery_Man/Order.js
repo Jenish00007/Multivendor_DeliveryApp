@@ -23,6 +23,8 @@ import { useConfiguration } from '../../context/Configuration';
 import { getAppName } from '../../services/configService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppBranding } from '../../utils/translationHelper';
+import * as Location from 'expo-location';
+import LocationPermission from '../../components/LocationPermission/LocationPermission';
 
 const OrderRequestScreen = () => {
   const navigation = useNavigation();
@@ -31,25 +33,50 @@ const OrderRequestScreen = () => {
   const [deliveryManId, setDeliveryManId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [additionalNote, setAdditionalNote] = useState('');
+  const [locationPermission, setLocationPermission] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [activeTab, setActiveTab] = useState('processing'); // New state for active tab
   const { token, formetedProfileData, isDeliveryMan, logout } = useUserContext();
   const configuration = useConfiguration();
   const appName = getAppName(configuration.config);
   const branding = useAppBranding();
 
   useEffect(() => {
-    
-        fetchOrders();
-      
+    checkLocationPermission();
+    fetchOrders();
   }, [token]);
+
+  const checkLocationPermission = async () => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      setLocationPermission(status);
+      
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+          timeout: 10000,
+        });
+        setCurrentLocation(location.coords);
+      }
+    } catch (error) {
+      console.error('Error checking location permission:', error);
+      setLocationPermission('denied');
+    }
+  };
+
+  const handleLocationGranted = (coords) => {
+    setCurrentLocation(coords);
+    setLocationPermission('granted');
+  };
+
+  const handleLocationDenied = () => {
+    setLocationPermission('denied');
+  };
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      console.log("Fetching orders...");
-
-
       const token = await AsyncStorage.getItem('token');
-      console.log("Token", token);
       // Get delivery man ID first
       const meResponse = await axios.get(`${API_URL}/deliveryman/me`, {
         headers: {
@@ -58,14 +85,13 @@ const OrderRequestScreen = () => {
           'Accept': 'application/json'
         }
       });
-      console.log("Delivery Man Data", meResponse.data);
+
       if (!meResponse.data.success || !meResponse.data.deliveryMan?._id) {
         throw new Error('Invalid delivery man data received');
       }
 
       const currentDeliveryManId = meResponse.data.deliveryMan._id;
       setDeliveryManId(currentDeliveryManId);
-      console.log("Delivery man ID set:", currentDeliveryManId);
 
       // Fetch orders
       const ordersResponse = await axios.get(`${API_URL}/deliveryman/orders`, {
@@ -81,7 +107,6 @@ const OrderRequestScreen = () => {
       }
 
       setOrders(ordersResponse.data.orders);
-      console.log("Orders set successfully:", ordersResponse.data.orders.length);
 
     } catch (error) {
       console.error("Error in fetchOrders:", error);
@@ -115,6 +140,55 @@ const OrderRequestScreen = () => {
     fetchOrders().finally(() => setRefreshing(false));
   }, []);
 
+  // Categorize orders by status
+  const categorizeOrders = (ordersList) => {
+    const processing = ordersList.filter(order => 
+      order.status === 'PENDING' || 
+      order.status === 'ACCEPTED' || 
+      order.status === 'ASSIGNED' ||
+      order.status === 'Processing'
+    );
+    
+    const outForDelivery = ordersList.filter(order => 
+      order.status === 'PICKED' || 
+      order.status === 'out_for_delivery' ||
+      order.status === 'Out for delivery'
+    );
+    
+    const delivered = ordersList.filter(order => 
+      order.status === 'DELIVERED' || 
+      order.status === 'COMPLETED' ||
+      order.status === 'Delivered'
+    );
+    
+    return { processing, outForDelivery, delivered };
+  };
+
+  // Get orders for current active tab
+  const getCurrentTabOrders = () => {
+    const categorized = categorizeOrders(orders);
+    switch (activeTab) {
+      case 'processing':
+        return categorized.processing;
+      case 'outForDelivery':
+        return categorized.outForDelivery;
+      case 'delivered':
+        return categorized.delivered;
+      default:
+        return categorized.processing;
+    }
+  };
+
+  // Get tab counts
+  const getTabCounts = () => {
+    const categorized = categorizeOrders(orders);
+    return {
+      processing: categorized.processing.length,
+      outForDelivery: categorized.outForDelivery.length,
+      delivered: categorized.delivered.length,
+    };
+  };
+
   useEffect(() => {
     if (token && isDeliveryMan()) {
       fetchOrders();
@@ -123,7 +197,6 @@ const OrderRequestScreen = () => {
 
   const handleAccept = async (orderId) => {
     const token = await AsyncStorage.getItem('token');
-    console.log("Token", token);
     if (!orderId || !deliveryManId) {
       Alert.alert('Error', 'Invalid order or delivery man ID');
       return;
@@ -185,7 +258,6 @@ const OrderRequestScreen = () => {
 
     try {
       const token = await AsyncStorage.getItem('token');
-    console.log("Token", token);
       const response = await axios.put(
         `${API_URL}/order/deliveryman/ignore-order/${orderId}`,
         {},
@@ -232,6 +304,65 @@ const OrderRequestScreen = () => {
     }
   };
 
+  // Tab Navigation Component
+  const TabNavigation = () => {
+    const tabCounts = getTabCounts();
+    
+    const tabs = [
+      { key: 'processing', label: 'Processing', count: tabCounts.processing, icon: 'hourglass-outline' },
+      { key: 'outForDelivery', label: 'Out for Delivery', count: tabCounts.outForDelivery, icon: 'bicycle-outline' },
+      { key: 'delivered', label: 'Delivered', count: tabCounts.delivered, icon: 'checkmark-circle-outline' },
+    ];
+
+    return (
+      <View style={[styles.tabContainer, { backgroundColor: branding.backgroundColor }]}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabScrollContent}
+        >
+          {tabs.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[
+                styles.tab,
+                activeTab === tab.key && styles.activeTab,
+                { 
+                  backgroundColor: activeTab === tab.key ? branding.primaryColor : branding.secondaryBackground,
+                  borderColor: activeTab === tab.key ? branding.primaryColor : branding.secondaryBackground
+                }
+              ]}
+              onPress={() => setActiveTab(tab.key)}
+            >
+              <Icon 
+                name={tab.icon} 
+                size={18} 
+                color={activeTab === tab.key ? branding.whiteColorText : branding.textColor} 
+              />
+              <Text style={[
+                styles.tabLabel,
+                { color: activeTab === tab.key ? branding.whiteColorText : branding.textColor }
+              ]}>
+                {tab.label}
+              </Text>
+              <View style={[
+                styles.tabCount,
+                { backgroundColor: activeTab === tab.key ? branding.whiteColorText : branding.primaryColor }
+              ]}>
+                <Text style={[
+                  styles.tabCountText,
+                  { color: activeTab === tab.key ? branding.primaryColor : branding.whiteColorText }
+                ]}>
+                  {tab.count}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   const OrderCard = ({ order }) => {
     const isAssigned = order?.delivery_man !== null && order?.delivery_man !== undefined;
     const isAssignedToMe = order?.delivery_man?._id === deliveryManId;
@@ -276,12 +407,16 @@ const OrderRequestScreen = () => {
           <View style={styles.orderInfo}>
             <Text style={[styles.orderId, { color: branding.textColor }]}>Order #{order._id.slice(-6)}</Text>
             <Text style={[styles.orderTime, { color: branding.textColor }]}>
-              {new Date(order.createdAt).toLocaleTimeString()}
+              {new Date(order.createdAt).toLocaleDateString('en-IN', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+              })} {new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
             </Text>
           </View>
           <View style={styles.distanceInfo}>
             <Text style={[styles.distanceText, { color: branding.textColor }]}>
-              {order.distance ? `${order.distance.toFixed(1)} km` : 'N/A'}
+              {order.distance?.km ? `${order.distance.km.toFixed(1)} km` : 'N/A'}
             </Text>
           </View>
         </View>
@@ -346,6 +481,16 @@ const OrderRequestScreen = () => {
     );
   };
 
+  // Show location permission screen if location is not granted
+  if (locationPermission !== 'granted') {
+    return (
+      <LocationPermission
+        onLocationGranted={handleLocationGranted}
+        onLocationDenied={handleLocationDenied}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: branding.backgroundColor }]}>
       <StatusBar barStyle="dark-content" backgroundColor={branding.primaryColor} />
@@ -353,11 +498,16 @@ const OrderRequestScreen = () => {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: branding.backgroundColor, borderBottomColor: branding.secondaryBackground }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="white" />
+          <Icon name="arrow-back" size={24} color={branding.textColor} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: 'white' }]}>Order Request</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={[styles.headerTitle, { color: branding.textColor }]}>Orders</Text>
+        <TouchableOpacity style={styles.refreshButton} onPress={fetchOrders}>
+          <Icon name="refresh" size={20} color={branding.textColor} />
+        </TouchableOpacity>
       </View>
+
+      {/* Tab Navigation */}
+      <TabNavigation />
 
       {/* Order List */}
       <ScrollView
@@ -372,16 +522,27 @@ const OrderRequestScreen = () => {
             <ActivityIndicator size="large" color={branding.primaryColor} />
             <Text style={[styles.loadingText, { color: branding.textColor }]}>Loading orders...</Text>
           </View>
-        ) : orders.length > 0 ? (
-          orders.map((order) => (
+        ) : getCurrentTabOrders().length > 0 ? (
+          getCurrentTabOrders().map((order) => (
             <OrderCard key={order._id} order={order} />
           ))
         ) : (
           <View style={styles.noOrders}>
-            <MaterialIcon name="delivery-dining" size={64} color={branding.textColor} />
-            <Text style={[styles.noOrdersText, { color: branding.textColor }]}>No orders available</Text>
+            <MaterialIcon 
+              name={
+                activeTab === 'processing' ? 'hourglass-empty' :
+                activeTab === 'outForDelivery' ? 'bicycle' : 'check-circle'
+              } 
+              size={64} 
+              color={branding.textColor} 
+            />
+            <Text style={[styles.noOrdersText, { color: branding.textColor }]}>
+              {activeTab === 'processing' ? 'No processing orders' :
+               activeTab === 'outForDelivery' ? 'No out for delivery orders' : 'No delivered orders'}
+            </Text>
             <Text style={[styles.noOrdersSubText, { color: branding.textColor }]}>
-              New orders will appear here when available
+              {activeTab === 'processing' ? 'New orders will appear here when available' :
+               activeTab === 'outForDelivery' ? 'Orders ready for delivery will appear here' : 'Completed orders will appear here'}
             </Text>
           </View>
         )}
@@ -414,6 +575,52 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 34,
+  },
+  refreshButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  tabContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  tabScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+    minWidth: 120,
+  },
+  activeTab: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tabCount: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  tabCountText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,

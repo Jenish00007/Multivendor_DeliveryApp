@@ -34,9 +34,9 @@ export const useAppBranding = () => {
     textColor: safeTheme.fontMainColor,
     backgroundColor: safeTheme.themeBackground,
     buttonColor: appConfig.splash?.backgroundColor,
-    logo: require('../../assets/figgo/icon.png'),
-    splashLogo: require('../../assets/figgo/icon.png'),   
-    appLogo: require('../../assets/figgo/icon.png'),
+    logo: require('../../assets/icon.png'),
+    splashLogo: require('../../assets/splash.png'),   
+    appLogo: require('../../assets/icon.png'),
     contactInfo: {
       email: contactInfo?.email || '',
       phone: contactInfo?.phone || ''

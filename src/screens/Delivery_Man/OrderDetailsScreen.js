@@ -23,6 +23,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
 import axios from 'axios';
 import { useAppBranding } from '../../utils/translationHelper';
+import useQRPayment from '../../ui/hooks/useQRPayment';
+import QRPaymentModal from '../../components/QRPayment/QRPaymentModal';
 
 const { width } = Dimensions.get('window');
 
@@ -34,7 +36,24 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
   const [enteredOtp, setEnteredOtp] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isQRModalVisible, setIsQRModalVisible] = useState(false);
   const branding = useAppBranding();
+
+  // QR Payment Hook
+  const {
+    qrData,
+    paymentStatus,
+    loading: qrLoading,
+    error: qrError,
+    isMonitoring,
+    generateQRCode,
+    confirmPaymentManually,
+    resetQRPayment,
+    regenerateQRCode,
+    isPaymentSucceeded,
+    isPaymentPending,
+    setTestQRData,
+  } = useQRPayment();
 
   const fetchOrderDetails = async () => {
     try {
@@ -52,10 +71,20 @@ const OrderDetailsScreen = ({ route, navigation }) => {
       });
 
       if (response.data.success) {
-        setOrderDetails({ 
+        const orderData = { 
           ...response.data.order,
           items: response.data.order.items || []
+        };
+        
+        // Debug log to understand address data structure
+        console.log('Order Details Address Data:', {
+          userLocation: orderData.userLocation,
+          shippingAddress: orderData.shippingAddress,
+          user: orderData.user,
+          customer: orderData.customer
         });
+        
+        setOrderDetails(orderData);
         setAdditionalNote(response.data.order.delivery_instruction || '');
       } else {
         throw new Error(response.data.message || 'Failed to fetch order details');
@@ -161,7 +190,73 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   };
 
   const handleSwipeConfirmation = () => {
+    // Check if payment is required and not yet completed
+    if (shouldShowQRPayment() && !isPaymentSucceeded) {
+      Alert.alert(
+        'Payment Required',
+        'Please collect payment from customer before confirming delivery.',
+        [
+          { text: 'Collect Payment', onPress: handleShowQRPayment },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+    
     setIsOtpModalVisible(true);
+  };
+
+  // Check if QR payment should be shown (non-COD orders)
+  const shouldShowQRPayment = () => {
+    // For testing: always show QR payment option
+    // In production, uncomment the lines below to only show for non-COD orders
+    return true;
+    
+    // const paymentMethod = orderDetails?.paymentInfo?.type || orderDetails?.paymentMethod;
+    // return paymentMethod && paymentMethod.toLowerCase() !== 'cod' && paymentMethod.toLowerCase() !== 'cash_on_delivery';
+  };
+
+  // Show QR Payment Modal
+  const handleShowQRPayment = async () => {
+    setIsQRModalVisible(true);
+    if (!qrData && isPaymentPending) {
+      const result = await generateQRCode(orderId);
+      if (!result.success) {
+        Alert.alert('Error', result.message || 'Failed to generate QR code');
+        setIsQRModalVisible(false);
+      }
+    }
+  };
+
+
+  // Handle QR Modal Close
+  const handleCloseQRModal = () => {
+    setIsQRModalVisible(false);
+    if (!isPaymentSucceeded) {
+      resetQRPayment();
+    }
+  };
+
+  // Handle Cash Payment Confirmation
+  const handleConfirmCashPayment = async (notes) => {
+    const result = await confirmPaymentManually(orderId, 'cash', notes);
+    if (result.success) {
+      Alert.alert('Success', 'Cash payment confirmed successfully!');
+      // Auto-close modal after success
+      setTimeout(() => {
+        setIsQRModalVisible(false);
+      }, 2000);
+    } else {
+      Alert.alert('Error', result.message || 'Failed to confirm cash payment');
+    }
+  };
+
+  // Handle QR Regeneration
+  const handleRegenerateQR = async () => {
+    const result = await regenerateQRCode();
+    if (!result.success) {
+      Alert.alert('Error', result.message || 'Failed to regenerate QR code');
+    }
   };
 
   const confirmDeliveryWithOtp = async () => {
@@ -224,6 +319,42 @@ const OrderDetailsScreen = ({ route, navigation }) => {
 
   const formatPrice = (price) => {
     return `₹${parseFloat(price).toFixed(2)}`;
+  };
+
+  // Function to get properly formatted address
+  const getFormattedAddress = () => {
+    // Priority order for address sources
+    const addressSources = [
+      orderDetails?.userLocation?.deliveryAddress,
+      orderDetails?.shippingAddress?.address,
+      orderDetails?.shippingAddress?.address1,
+      orderDetails?.user?.address,
+      orderDetails?.customer?.address
+    ];
+
+    // Find the first non-empty address
+    for (const address of addressSources) {
+      if (address && address.trim() && address.toLowerCase() !== 'delhi') {
+        return address.trim();
+      }
+    }
+
+    // If no valid address found, try to construct from parts
+    if (orderDetails?.shippingAddress) {
+      const parts = [];
+      if (orderDetails.shippingAddress.street) parts.push(orderDetails.shippingAddress.street);
+      if (orderDetails.shippingAddress.locality) parts.push(orderDetails.shippingAddress.locality);
+      if (orderDetails.shippingAddress.city) parts.push(orderDetails.shippingAddress.city);
+      if (orderDetails.shippingAddress.state) parts.push(orderDetails.shippingAddress.state);
+      if (orderDetails.shippingAddress.pincode) parts.push(orderDetails.shippingAddress.pincode);
+      
+      const constructedAddress = parts.join(', ');
+      if (constructedAddress.trim() && constructedAddress.toLowerCase() !== 'delhi') {
+        return constructedAddress;
+      }
+    }
+
+    return 'Address not available';
   };
 
   if (loading) {
@@ -309,9 +440,56 @@ const OrderDetailsScreen = ({ route, navigation }) => {
                 <Text style={[styles.paymentText, { color: branding.whiteColorText }]}>{orderDetails?.paymentInfo?.type || 'COD'}</Text>
               </View>
             </View>
+            
+            {/* Payment Status Row */}
+            {shouldShowQRPayment() && (
+              <View style={styles.summaryRow}>
+                <Text style={[styles.summaryLabel, { color: branding.textColor }]}>Payment Status:</Text>
+                <View style={[
+                  styles.paymentStatusBadge, 
+                  { backgroundColor: isPaymentSucceeded ? branding.cartDiscountColor : branding.cartDeleteColor }
+                ]}>
+                  <Icon 
+                    name={isPaymentSucceeded ? "checkmark-circle" : "time"} 
+                    size={12} 
+                    color={branding.whiteColorText} 
+                  />
+                  <Text style={[styles.paymentStatusText, { color: branding.whiteColorText }]}>
+                    {isPaymentSucceeded ? 'Paid' : 'Pending'}
+                  </Text>
+                </View>
+              </View>
+            )}
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: branding.textColor }]}>Items:</Text>
               <Text style={[styles.summaryValue, { color: branding.textColor }]}>{(orderDetails?.items?.length || 0)}</Text>
+            </View>
+            
+            {/* Order Time */}
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: branding.textColor }]}>Order Time:</Text>
+              <Text style={[styles.summaryValue, { color: branding.textColor }]}>
+                {orderDetails?.createdAt ? 
+                  new Date(orderDetails.createdAt).toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  }) : 
+                  orderDetails?.created_at ? 
+                    new Date(orderDetails.created_at).toLocaleString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    }) : 
+                    'N/A'
+                }
+              </Text>
             </View>
           </View>
         </View>
@@ -385,10 +563,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
                   {orderDetails?.user?.name || orderDetails?.shippingAddress?.name || 'Customer Name'}
                 </Text>
                 <Text style={[styles.detailSubtext, { color: branding.textColor }]} numberOfLines={2}>
-                  {orderDetails?.userLocation?.deliveryAddress || 
-                   orderDetails?.shippingAddress?.address || 
-                   orderDetails?.shippingAddress?.address1 || 
-                   'Address not available'}
+                  {getFormattedAddress()}
                 </Text>
                 {(orderDetails?.user?.phoneNumber || orderDetails?.user?.phone || orderDetails?.shippingAddress?.phone) && (
                   <Text style={[styles.phoneText, { color: branding.primaryColor }]}>
@@ -427,7 +602,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: branding.textColor }]}>Address:</Text>
                 <Text style={[styles.infoValue, { color: branding.textColor }]}>
-                  {orderDetails?.shippingAddress?.address || orderDetails?.shippingAddress?.address1 || 'N/A'}
+                  {getFormattedAddress()}
                 </Text>
               </View>
               
@@ -497,7 +672,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.actionButton, styles.directionButton, { backgroundColor: branding.secondaryBackground }]}
-                onPress={() => handleDirection('customer', orderDetails?.shippingAddress?.address)}
+                onPress={() => handleDirection('customer', getFormattedAddress())}
               >
                 <Icon name="navigate" size={16} color={branding.primaryColor} />
                 <Text style={[styles.directionText, { color: branding.primaryColor }]}>
@@ -570,11 +745,53 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           </View>
         </View> */}
 
+
+        {/* QR Payment Button - Show only for non-COD orders */}
+        {shouldShowQRPayment() && (
+          <TouchableOpacity 
+            style={[
+              styles.qrPaymentButton, 
+              { 
+                backgroundColor: isPaymentSucceeded ? branding.cartDiscountColor : branding.primaryColor,
+                opacity: isPaymentSucceeded ? 0.8 : 1 
+              }
+            ]}
+            onPress={handleShowQRPayment}
+            activeOpacity={0.8}
+            disabled={isPaymentSucceeded}
+          >
+            <View style={styles.qrPaymentContent}>
+              {qrLoading ? (
+                <ActivityIndicator size="small" color={branding.whiteColorText} />
+              ) : (
+                <Icon 
+                  name={isPaymentSucceeded ? "checkmark-circle" : "qr-code"} 
+                  size={24} 
+                  color={branding.whiteColorText} 
+                />
+              )}
+              <Text style={[styles.qrPaymentText, { color: branding.whiteColorText }]}>
+                {isPaymentSucceeded ? 'Payment Received' : 'Collect Payment'}
+              </Text>
+              {!qrLoading && !isPaymentSucceeded && (
+                <Icon name="arrow-forward" size={20} color={branding.whiteColorText} />
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Enhanced Confirmation Button */}
         <TouchableOpacity 
-          style={[styles.confirmButton, { backgroundColor: branding.primaryColor }]}
+          style={[
+            styles.confirmButton, 
+            { 
+              backgroundColor: branding.primaryColor,
+              opacity: (shouldShowQRPayment() && !isPaymentSucceeded) ? 0.6 : 1
+            }
+          ]}
           onPress={handleSwipeConfirmation}
           activeOpacity={0.8}
+          disabled={(shouldShowQRPayment() && !isPaymentSucceeded) || isConfirming}
         >
           <View style={styles.confirmContent}>
             {isConfirming ? (
@@ -631,6 +848,24 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* QR Payment Modal */}
+      <QRPaymentModal
+        visible={isQRModalVisible}
+        onClose={handleCloseQRModal}
+        qrData={qrData}
+        paymentStatus={paymentStatus}
+        loading={qrLoading}
+        error={qrError}
+        isMonitoring={isMonitoring}
+        onConfirmCashPayment={handleConfirmCashPayment}
+        onRegenerateQR={handleRegenerateQR}
+        orderDetails={{
+          totalAmount: totalAmount,
+          customerName: orderDetails?.user?.name || orderDetails?.shippingAddress?.name,
+          orderId: orderId,
+        }}
+      />
 
       <BottomTab screen="ORDERS" />
     </SafeAreaView>
@@ -749,6 +984,18 @@ const styles = StyleSheet.create({
   },
   paymentText: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+  paymentStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  paymentStatusText: {
+    fontSize: 10,
     fontWeight: '600',
   },
   section: {
@@ -963,10 +1210,30 @@ const styles = StyleSheet.create({
     minHeight: 80,
     lineHeight: 20,
   },
+  qrPaymentButton: {
+    borderRadius: 16,
+    paddingVertical: 18,
+    marginTop: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  qrPaymentContent: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  qrPaymentText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   confirmButton: {
     borderRadius: 16,
     paddingVertical: 18,
-    marginTop: 32,
+    marginTop: 16,
     shadowColor: '#F16122',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

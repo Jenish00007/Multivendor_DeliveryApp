@@ -118,7 +118,7 @@ const DeliveryHome = () => {
     const fetchOrders = async () => {
         try {
             const token = await AsyncStorage.getItem('token');
-    console.log("Token", token);
+            console.log("Token", token);
             if (!token) {
                 console.log('No token available');
                 return;
@@ -132,7 +132,20 @@ const DeliveryHome = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to fetch orders');
+                // Log the response status and text for debugging
+                const responseText = await response.text();
+                console.error('Response status:', response.status);
+                console.error('Response text:', responseText);
+                throw new Error(`HTTP ${response.status}: Failed to fetch orders`);
+            }
+
+            // Check if response is actually JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const responseText = await response.text();
+                console.error('Expected JSON but received:', contentType);
+                console.error('Response text:', responseText);
+                throw new Error('Server returned non-JSON response');
             }
 
             const data = await response.json();
@@ -143,6 +156,11 @@ const DeliveryHome = () => {
             }
         } catch (error) {
             console.error('Error fetching orders:', error);
+            // Show user-friendly error message
+            FlashMessage({
+                message: 'Failed to load orders. Please check your connection.',
+                type: 'danger'
+            });
         }
     };
 

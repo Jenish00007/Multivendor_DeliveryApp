@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect } from 'react'
+import React, { useCallback, useContext, useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
@@ -6,6 +6,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import navigationService from './navigationService'
 import * as Notifications from 'expo-notifications'
+import * as Location from 'expo-location'
 import OrderRequestScreen from '../screens/Delivery_Man/Order'
 import OrderDetailsScreen from '../screens/Delivery_Man/OrderDetailsScreen'
 import DeliveryTrackingScreen from '../screens/Delivery_Man/DeliveryTrackingScreen'
@@ -48,6 +49,7 @@ import Notification from '../screens/Notification/Notification'
 import Options from '../screens/Options/Options'
 import TermsAndConditions from '../screens/Policies/TermsAndConditions'
 import PrivacyPolicy from '../screens/Policies/PrivacyPolicy'
+import LocationPermission from '../components/LocationPermission/LocationPermission'
 import RefundPolicy from '../screens/Policies/RefundPolicy'
 import CancellationPolicy from '../screens/Policies/CancellationPolicy'
 import ShippingPolicy from '../screens/Policies/ShippingPolicy'
@@ -61,7 +63,7 @@ import { ActivityIndicator, View } from 'react-native'
 const NavigationStack = createStackNavigator()
 const MainStack = createStackNavigator()
 const SideDrawer = createDrawerNavigator()
-const Location = createStackNavigator()
+const LocationStack = createStackNavigator()
 const AuthStack = createStackNavigator()
 
 
@@ -196,18 +198,18 @@ function NoDrawer() {
   )
 }
 
-function LocationStack() {
+function LocationStackNavigator() {
   return (
-    <Location.Navigator>
-      <Location.Screen
+    <LocationStack.Navigator>
+      <LocationStack.Screen
         name='CurrentLocation'
         component={CurrentLocation}
         options={{ header: () => null }}
       />
-      <Location.Screen name='SelectLocation' component={SelectLocation} />
-      <Location.Screen name='AddNewAddress' component={AddNewAddress} />
-      <Location.Screen name='Menu'  options={{ header: () => null }} component={Menu} />
-    </Location.Navigator>
+      <LocationStack.Screen name='SelectLocation' component={SelectLocation} />
+      <LocationStack.Screen name='AddNewAddress' component={AddNewAddress} />
+      <LocationStack.Screen name='Menu'  options={{ header: () => null }} component={Menu} />
+    </LocationStack.Navigator>
   )
 }
 
@@ -234,6 +236,42 @@ function AppContainer() {
   const { SENTRY_DSN } = useEnvVars()
   const { token, isLoading } = useContext(AuthContext)
   const lastNotificationResponse = Notifications.useLastNotificationResponse()
+  const [locationPermission, setLocationPermission] = useState(null)
+  const [currentLocation, setCurrentLocation] = useState(null)
+  
+  // Check location permission for delivery man
+  useEffect(() => {
+    const checkLocationPermission = async () => {
+      if (token) {
+        try {
+          const { status } = await Location.getForegroundPermissionsAsync()
+          setLocationPermission(status)
+          
+          if (status === 'granted') {
+            const location = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+              timeout: 10000,
+            })
+            setCurrentLocation(location.coords)
+          }
+        } catch (error) {
+          console.error('Error checking location permission:', error)
+          setLocationPermission('denied')
+        }
+      }
+    }
+    
+    checkLocationPermission()
+  }, [token])
+  
+  const handleLocationGranted = (coords) => {
+    setCurrentLocation(coords)
+    setLocationPermission('granted')
+  }
+  
+  const handleLocationDenied = () => {
+    setLocationPermission('denied')
+  }
   
   const handleNotification = useCallback(
     async (response) => {
@@ -297,6 +335,16 @@ function AppContainer() {
   // Show loading screen while checking authentication status
   if (isLoading) {
     return <LoadingScreen />
+  }
+
+  // Show location permission screen for authenticated delivery man
+  if (token && locationPermission !== 'granted') {
+    return (
+      <LocationPermission
+        onLocationGranted={handleLocationGranted}
+        onLocationDenied={handleLocationDenied}
+      />
+    )
   }
 
   return (

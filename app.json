@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Figgo Partner",
+    "name": "Qauds Partner",
     "scheme": "qauds",
     "version": "1.0.0",
     "description": "Ordering app built in React Native using Expo for IOS and Android.",
-    "slug": "akj",
-    "owner": "jenish111",
+    "slug": "qauds",
+    "owner": "jenish_123",
     "privacy": "public",
     "androidStatusBar": {
       "backgroundColor": "#000000"
@@ -15,11 +15,11 @@
       "android"
     ],
     "orientation": "portrait",
-    "icon": "./assets/figgo/icon.png",
+    "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/figgo/splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "cover",
-      "backgroundColor": "#F7CA0F"
+      "backgroundColor": "#F16122"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -102,7 +102,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "0539d8a7-2c87-4e26-8f95-16389298f630"
+        "projectId": "911c20be-1236-4e38-b233-4b3854e122ca"
       }
     }
   }
