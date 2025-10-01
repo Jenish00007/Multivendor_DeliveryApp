@@ -11,21 +11,30 @@ export default function Categories({ categories }) {
         data={categories}
         showsHorizontalScrollIndicator={false}
         horizontal={true}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity
-            onPress={() => navigation.push('SubCategory', { category: item })}
-          >
-            <View style={styles.container}>
-              <View style={styles.iconContainer}>
-                <Image
-                  style={styles.icon}
-                  source={{ uri: item?.image || item?.images?.[0] }}
-                />
+        renderItem={({ item, index }) => {
+          const imageUri = item?.image || item?.images?.[0];
+          const validUri = typeof imageUri === 'string' && imageUri.trim() ? imageUri : null;
+          
+          return (
+            <TouchableOpacity
+              onPress={() => navigation.push('SubCategory', { category: item })}
+            >
+              <View style={styles.container}>
+                <View style={styles.iconContainer}>
+                  {validUri ? (
+                    <Image
+                      style={styles.icon}
+                      source={{ uri: validUri }}
+                    />
+                  ) : (
+                    <View style={styles.icon} />
+                  )}
+                </View>
+                <Text style={styles.text}>{item?.name}</Text>
               </View>
-              <Text style={styles.text}>{item?.name}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+            </TouchableOpacity>
+          );
+        }}
         keyExtractor={(item) => item?._id?.toString() || Math.random().toString()}
       />
     </View>

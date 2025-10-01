@@ -55,15 +55,23 @@ const OfferCard = ({item}) => {
     const formattedDistance = item?.distance ? `${Math.round(item.distance / 1000) || '100+'} km` : 'N/A';
     const truncatedName = name?.length > 12 ? `${name.substring(0, 12)}...` : name;
 
+    // Validate image URI
+    const imageUri = item?.image || item?.images?.[0];
+    const validImageUri = typeof imageUri === 'string' && imageUri.trim() ? imageUri : null;
+
     return (
         <View style={supermarketStyles.container}>
             <TouchableOpacity onPress={() => navigation.navigate('ProductDetail', { product: item })}>
                 <View style={supermarketStyles.header}>
                     <View style={supermarketStyles.headerLeft}>
-                        <Image
-                            source={{ uri: item?.image || item?.images?.[0] }}
+                        {validImageUri ? (
+                          <Image
+                            source={{ uri: validImageUri }}
                             style={supermarketStyles.logoIcon}
-                        />
+                          />
+                        ) : (
+                          <View style={supermarketStyles.logoIcon} />
+                        )}
                         <Text style={supermarketStyles.title}>{truncatedName}</Text>
                     </View>
                     

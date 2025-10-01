@@ -37,11 +37,18 @@ const CarouselSlider = ({ banners }) => {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {banners?.map((slide) => (
-          <View key={slide.id} style={styles.slide}>
-            <Image source={{ uri: slide?.image }} style={styles.image} />
-          </View>
-        ))}
+        {banners?.map((slide) => {
+          const imageUri = typeof slide?.image === 'string' && slide.image.trim() ? slide.image : null;
+          return (
+            <View key={slide.id} style={styles.slide}>
+              {imageUri ? (
+                <Image source={{ uri: imageUri }} style={styles.image} />
+              ) : (
+                <View style={styles.image} />
+              )}
+            </View>
+          );
+        })}
       </ScrollView>
       <View style={styles.paginationContainer}>
         {banners?.map((_, index) => (

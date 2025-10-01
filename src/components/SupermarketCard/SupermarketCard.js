@@ -7,24 +7,32 @@ export const SupermarketCard = ({ name,
   active,
   address,
   distance,
-  logo_full_url }) => (
-
-  <View style={supermarketStyles.container}>
-    
-    <View style={supermarketStyles.header}>
-      <View style={supermarketStyles.headerLeft}>
-        
-        {isNew && (
-          <View style={supermarketStyles.newBadge}>
-            <Text style={supermarketStyles.newText}>NEW</Text>
-          </View>
-        )}
-        <Image
-          source={{ uri: logo_full_url }}
-          style={supermarketStyles.logoIcon}
-        />
-        <Text style={supermarketStyles.title}>{name}</Text>
-      </View>
+  logo_full_url }) => {
+  
+  // Validate logo URI
+  const logoUri = typeof logo_full_url === 'string' && logo_full_url.trim() ? logo_full_url : null;
+  
+  return (
+    <View style={supermarketStyles.container}>
+      
+      <View style={supermarketStyles.header}>
+        <View style={supermarketStyles.headerLeft}>
+          
+          {isNew && (
+            <View style={supermarketStyles.newBadge}>
+              <Text style={supermarketStyles.newText}>NEW</Text>
+            </View>
+          )}
+          {logoUri ? (
+            <Image
+              source={{ uri: logoUri }}
+              style={supermarketStyles.logoIcon}
+            />
+          ) : (
+            <View style={supermarketStyles.logoIcon} />
+          )}
+          <Text style={supermarketStyles.title}>{name}</Text>
+        </View>
       <TouchableOpacity>
         <Image
           source={require('../../assets/icons/fullHeart.png')}
@@ -61,7 +69,8 @@ export const SupermarketCard = ({ name,
       )}
     </View>
   </View>
-);
+  );
+};
 
 const supermarketStyles = StyleSheet.create({
   container: {

@@ -19,6 +19,11 @@ function RestaurantCard(props) {
   const themeContext = useContext(ThemeContext)
   const currentTheme = theme[themeContext.ThemeValue]
 
+  // Validate image URI
+  const imageUri = typeof props?.image === 'string' && props.image.trim() 
+    ? props.image 
+    : null;
+
   return (
     <View style={{ ...alignment.PRsmall }}>
       <TouchableOpacity
@@ -26,11 +31,15 @@ function RestaurantCard(props) {
         activeOpacity={1}
         onPress={() => navigation.navigate('Restaurant', { ...props })}>
         <View style={styles().imageContainer}>
-          <Image
-            resizeMode="cover"
-            source={{ uri: props.image }}
-            style={styles().restaurantImage}
-          />
+          {imageUri ? (
+            <Image
+              resizeMode="cover"
+              source={{ uri: imageUri }}
+              style={styles().restaurantImage}
+            />
+          ) : (
+            <View style={styles().restaurantImage} />
+          )}
           <View style={styles().overlayContainer}>
             <View style={styles(currentTheme).deliveryOverlay}>
               <TextDefault

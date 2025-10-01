@@ -69,6 +69,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           'Content-Type': 'application/json'
         }
       });
+      console.log('what is the token:', orderId)
 
       if (response.data.success) {
         const orderData = { 
@@ -76,13 +77,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           items: response.data.order.items || []
         };
         
-        // Debug log to understand address data structure
-        console.log('Order Details Address Data:', {
-          userLocation: orderData.userLocation,
-          shippingAddress: orderData.shippingAddress,
-          user: orderData.user,
-          customer: orderData.customer
-        });
+        console.log('\n\n--------------Order Details Screen--------------\n\n');
+        console.log(JSON.stringify(orderData, null, 2));
         
         setOrderDetails(orderData);
         setAdditionalNote(response.data.order.delivery_instruction || '');
@@ -502,19 +498,25 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           <View style={styles.detailCard}>
             <View style={styles.detailHeader}>
               <View style={styles.logoContainer}>
-                {orderDetails?.store?.logo ? (
-                  <Image 
-                    source={{ uri: orderDetails.store.logo }} 
-                    style={styles.logoImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.logoPlaceholder}>
-                    <Text style={styles.logoText}>
-                      {orderDetails?.store?.name?.charAt(0) || 'R'}
-                    </Text>
-                  </View>
-                )}
+                {(() => {
+                  const logoUri = typeof orderDetails?.store?.logo === 'string' && orderDetails.store.logo.trim()
+                    ? orderDetails.store.logo
+                    : null;
+                  
+                  return logoUri ? (
+                    <Image 
+                      source={{ uri: logoUri }} 
+                      style={styles.logoImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.logoPlaceholder}>
+                      <Text style={styles.logoText}>
+                        {orderDetails?.store?.name?.charAt(0) || 'R'}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </View>
               <View style={styles.detailInfo}>
                 <Text style={styles.detailName}>
@@ -692,20 +694,26 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             <Icon name="restaurant" size={16} color={branding.textColor} /> Order Items ({(orderDetails?.items || []).length || 0})
           </Text>
 
-          {(orderDetails?.items || []).map((item, index) => (
-            <View key={item._id || index} style={[styles.itemCard, { backgroundColor: branding.backgroundColor }]}>
-              <View style={styles.itemImageContainer}>
-                {item.image ? (
-                  <Image 
-                    source={{ uri: item.image }} 
-                    style={styles.itemImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={[styles.itemImagePlaceholder, { backgroundColor: branding.secondaryBackground }]}>
-                    <Icon name="fast-food" size={24} color={branding.textColor} />
-                  </View>
-                )}
+          {(orderDetails?.items || []).map((item, index) => {
+            // Validate item image URI
+            const itemImageUri = typeof item?.image === 'string' && item.image.trim()
+              ? item.image
+              : null;
+            
+            return (
+              <View key={item._id || index} style={[styles.itemCard, { backgroundColor: branding.backgroundColor }]}>
+                <View style={styles.itemImageContainer}>
+                  {itemImageUri ? (
+                    <Image 
+                      source={{ uri: itemImageUri }} 
+                      style={styles.itemImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.itemImagePlaceholder, { backgroundColor: branding.secondaryBackground }]}>
+                      <Icon name="fast-food" size={24} color={branding.textColor} />
+                    </View>
+                  )}
               </View>
               <View style={styles.itemDetails}>
                 <View style={styles.itemHeader}>
@@ -725,7 +733,8 @@ const OrderDetailsScreen = ({ route, navigation }) => {
                 )}
               </View>
             </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Additional Note */}

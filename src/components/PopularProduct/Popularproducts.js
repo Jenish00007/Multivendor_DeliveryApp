@@ -26,6 +26,11 @@ const PopularProducts = ({ data }) => {
   const translateX = useRef(new Animated.Value(50));
   const opacity = useRef(new Animated.Value(0));
 
+  // Validate image URI
+  const logoUri = typeof item?.logo_full_url === 'string' && item.logo_full_url.trim() 
+    ? item.logo_full_url 
+    : null;
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(translateX.current, {
@@ -57,10 +62,14 @@ const PopularProducts = ({ data }) => {
         <View style={styles.bgColorView} />
         <View style={{ ...StyleSheet.absoluteFillObject, flexDirection: 'row' }}>
           <View style={{ paddingVertical: 24, paddingLeft: 16 }}>
-            <Image
-              style={{ flex: 1, borderRadius: 16, aspectRatio: 1.0 }}
-              source={{uri:item.logo_full_url}}
-            />
+            {logoUri ? (
+              <Image
+                style={{ flex: 1, borderRadius: 16, aspectRatio: 1.0 }}
+                source={{uri: logoUri}}
+              />
+            ) : (
+              <View style={{ flex: 1, borderRadius: 16, aspectRatio: 1.0 }} />
+            )}
           </View>
           <View style={{ flex: 1, paddingLeft: 16, paddingVertical: 16 }}>
             <Text style={styles.title}>{item.title}</Text>

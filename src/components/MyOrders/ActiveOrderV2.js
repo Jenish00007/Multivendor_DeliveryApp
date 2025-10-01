@@ -57,16 +57,26 @@ const Item = ({ item, navigation, currentTheme }) => {
     { variables: { id: item._id } }
   )
   const { t } = useTranslation()
+  
+  // Validate image URI
+  const imageUri = typeof item?.restaurant?.image === 'string' && item.restaurant.image.trim() 
+    ? item.restaurant.image 
+    : null;
+
   return (
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={() => navigation.navigate('OrderDetail', { _id: item._id })}>
       <View style={styles(currentTheme).container}>
-        <Image
-          style={styles(currentTheme).image}
-          resizeMode="cover"
-          source={{ uri: item.restaurant.image }}
-        />
+        {imageUri ? (
+          <Image
+            style={styles(currentTheme).image}
+            resizeMode="cover"
+            source={{ uri: imageUri }}
+          />
+        ) : (
+          <View style={styles(currentTheme).image} />
+        )}
         <View style={styles(currentTheme).textContainer}>
           <View style={styles().leftContainer}>
             <TextDefault

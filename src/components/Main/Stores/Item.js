@@ -124,6 +124,11 @@ const handleSecondaryStoreNavigation = () => {
 
  
 
+  // Validate image URI
+  const coverPhotoUri = typeof item?.cover_photo_full_url === 'string' && item.cover_photo_full_url.trim() 
+    ? item.cover_photo_full_url 
+    : null;
+
   return (
     <TouchableOpacity
       style={{ padding: scale(10) }}
@@ -132,11 +137,15 @@ const handleSecondaryStoreNavigation = () => {
       <View key={item.id} style={styles().mainContainer}>
         <View style={[styles(currentTheme).restaurantContainer]}>
           <View style={styles().imageContainer}>
-            <Image
-              resizeMode="cover"
-              source={{ uri:item.cover_photo_full_url }}
-              style={styles().img}
-            />
+            {coverPhotoUri ? (
+              <Image
+                resizeMode="cover"
+                source={{ uri: coverPhotoUri }}
+                style={styles().img}
+              />
+            ) : (
+              <View style={styles().img} />
+            )}
             <View style={styles().overlayRestaurantContainer}>
               <TouchableOpacity
                 activeOpacity={0.7}

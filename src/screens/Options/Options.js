@@ -467,19 +467,27 @@ export default function SettingsScreen() {
           </View>
 
           <ScrollView style={styles.languageList} showsVerticalScrollIndicator={false}>
-            {languageTypes.map((item, index) => (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                key={index}
-                onPress={() => onSelectedLanguage(item.index)}
-                style={[styles.languageItem, activeRadio === item.index && styles.selectedLanguageItem]}
-              >
-                <View style={styles.languageItemLeft}>
-                  <Image 
-                    source={{ uri: item.flag }} 
-                    style={styles.flagIcon} 
-                    resizeMode="cover"
-                  />
+            {languageTypes.map((item, index) => {
+              // Validate flag URI
+              const flagUri = typeof item?.flag === 'string' && item.flag.trim() ? item.flag : null;
+              
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  key={index}
+                  onPress={() => onSelectedLanguage(item.index)}
+                  style={[styles.languageItem, activeRadio === item.index && styles.selectedLanguageItem]}
+                >
+                  <View style={styles.languageItemLeft}>
+                    {flagUri ? (
+                      <Image 
+                        source={{ uri: flagUri }} 
+                        style={styles.flagIcon} 
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.flagIcon} />
+                    )}
                   <View style={styles.languageTexts}>
                     <Text style={[styles.languageText, { color: currentTheme.fontMainColor }]}>
                       {item.value}
@@ -495,7 +503,8 @@ export default function SettingsScreen() {
                   </View>
                 )}
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </ScrollView>
           
           {loadinglang && (

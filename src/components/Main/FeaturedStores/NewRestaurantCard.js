@@ -54,6 +54,11 @@ function NewRestaurantCard(props) {
     }
   };
 
+  // Validate image URI
+  const coverPhotoUri = typeof props?.cover_photo_full_url === 'string' && props.cover_photo_full_url.trim() 
+    ? props.cover_photo_full_url 
+    : null;
+
   return (
     
       <TouchableOpacity
@@ -61,11 +66,15 @@ function NewRestaurantCard(props) {
         activeOpacity={1}
         onPress={() => navigation.navigate('Restaurant', { ...props })}>
         <View style={styles().imageContainer}>
-          <Image
-            resizeMode="cover"
-            source={{ uri: props?.cover_photo_full_url }}
-            style={styles().restaurantImage}
-          />
+          {coverPhotoUri ? (
+            <Image
+              resizeMode="cover"
+              source={{ uri: coverPhotoUri }}
+              style={styles().restaurantImage}
+            />
+          ) : (
+            <View style={styles().restaurantImage} />
+          )}
 
           <View style={styles().overlayContainer}>
             <TouchableOpacity

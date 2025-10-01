@@ -33,11 +33,14 @@ export default function Row({ id, restaurant }) {
     })
   }
 
+  // Validate image URI
+  const imageUri = typeof food?.image === 'string' && food.image.trim() ? food.image : null;
+
   return (
     <TouchableOpacity onPress={onAdd} style={{ flexDirection: 'row', marginBottom: scale(10) }}>
-      {food.image &&
+      {imageUri &&
       <View leftContainer >
-        <Image style={styles.image} source={{ uri: food.image }}/>
+        <Image style={styles.image} source={{ uri: imageUri }}/>
       </View>}
 
       <View mainContainer style={{ flex: 3, alignSelf: 'center', alignContent: 'center', marginLeft: scale(5) }}>

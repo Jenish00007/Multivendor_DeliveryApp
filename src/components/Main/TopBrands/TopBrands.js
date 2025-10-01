@@ -27,18 +27,28 @@ function TopBrands(props) {
     }
   })
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles().topbrandsContainer}
-      onPress={() => navigation.navigate('Restaurant', { ...item })}
-    >
-      <View style={styles().brandImgContainer}>
-        <Image
-          source={{ uri: item.image }}
-          style={styles().brandImg}
-          resizeMode='contain'
-        />
-      </View>
+  const renderItem = ({ item }) => {
+    // Validate image URI
+    const imageUri = typeof item?.image === 'string' && item.image.trim() 
+      ? item.image 
+      : null;
+    
+    return (
+      <TouchableOpacity
+        style={styles().topbrandsContainer}
+        onPress={() => navigation.navigate('Restaurant', { ...item })}
+      >
+        <View style={styles().brandImgContainer}>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles().brandImg}
+              resizeMode='contain'
+            />
+          ) : (
+            <View style={styles().brandImg} />
+          )}
+        </View>
 
       <View
         style={{
@@ -59,7 +69,8 @@ function TopBrands(props) {
         </TextDefault>
       </View>
     </TouchableOpacity>
-  )
+    );
+  };
 
   if (loading) return <TopBrandsLoadingUI />
   if (error) return <Text style={styles().margin}>Error: {error.message}</Text>

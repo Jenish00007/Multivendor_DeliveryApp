@@ -56,17 +56,26 @@ export const ProductCard = ({ item }) => {
     }
   };
 
+  // Validate image URI
+  const imageUri = typeof item?.image_full_url === 'string' && item.image_full_url.trim() 
+    ? item.image_full_url 
+    : null;
+
   return (
     <View style={styles.container}>
       <View style={styles.itemWrapper}>
         <TouchableOpacity onPress={() => navigation.navigate('ProductDetail', { product: item })} activeOpacity={0.8}>
           <View style={styles.itemContainer}>
             <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: item.image_full_url }}
-                style={styles.cardImageBG}
-                resizeMode="cover"
-              />
+              {imageUri ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={styles.cardImageBG}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.cardImageBG} />
+              )}
               <View style={styles.favoritePosition}>
                 <AddToFavourites product={item}/>
               </View>

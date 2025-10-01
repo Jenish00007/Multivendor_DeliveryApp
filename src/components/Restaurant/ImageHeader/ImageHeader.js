@@ -96,12 +96,17 @@ function ImageTextCenterHeader(props, ref) {
   }
 
   
+  // Validate restaurant image URI
+  const validRestaurantImage = typeof props?.restaurantImage === 'string' && props.restaurantImage.trim() 
+    ? props.restaurantImage 
+    : null;
+
   const aboutObject = {
     latitude: props.restaurant ? props.restaurant.latitude : '',
     longitude: props.restaurant ? props.restaurant.longitude : '',
     address: props.restaurant ? props.restaurant.address : '',
     restaurantName: props.restaurantName,
-    restaurantImage: props.restaurantImage,
+    restaurantImage: validRestaurantImage,
     restaurantTax: props.tax,
     restaurantMinOrder: props.minimumOrder,
     deliveryTime: props.restaurant ? props.restaurant.delivery_time : '...',
@@ -337,11 +342,15 @@ function ImageTextCenterHeader(props, ref) {
                 ]}
               >
                 <View style={[styles().restImageContainer]}>
-                  <Image
-                    resizeMode='cover'
-                    source={{ uri: aboutObject.restaurantImage }}
-                    style={[styles().restaurantImg]}
-                  />
+                  {aboutObject.restaurantImage ? (
+                    <Image
+                      resizeMode='cover'
+                      source={{ uri: aboutObject.restaurantImage }}
+                      style={[styles().restaurantImg]}
+                    />
+                  ) : (
+                    <View style={[styles().restaurantImg]} />
+                  )}
                 </View>
                 <View style={[styles().restaurantTitle, { flex: 1 }]}>
                   <TextDefault

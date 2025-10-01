@@ -14,6 +14,8 @@ const NearByStore = ({item}) => {
         logo_full_url
     } = item;
 
+    // Validate logo URI
+    const logoUri = typeof logo_full_url === 'string' && logo_full_url.trim() ? logo_full_url : null;
 
     return (
     
@@ -22,10 +24,14 @@ const NearByStore = ({item}) => {
         <View style={supermarketStyles.header}>
             <View style={supermarketStyles.headerLeft}>
                 
-                <Image
-                         source={{ uri: logo_full_url }}
-                         style={supermarketStyles.logoIcon}
-                       />
+                {logoUri ? (
+                  <Image
+                    source={{ uri: logoUri }}
+                    style={supermarketStyles.logoIcon}
+                  />
+                ) : (
+                  <View style={supermarketStyles.logoIcon} />
+                )}
                 <Text style={supermarketStyles.title}>{name}</Text>
             </View>
             <TouchableOpacity>

@@ -24,11 +24,19 @@ const NewFiggoStore = ({ item }) => {
     return text.length > length ? `${text.substring(0, length)}...` : text;
   };
 
+  // Validate URIs
+  const coverPhotoUri = typeof item?.cover_photo_full_url === 'string' && item.cover_photo_full_url.trim() 
+    ? item.cover_photo_full_url 
+    : null;
+  const logoUri = typeof item?.logo_full_url === 'string' && item.logo_full_url.trim() 
+    ? item.logo_full_url 
+    : null;
+
   return (
     <TouchableOpacity onPress={handleVisit} activeOpacity={0.8}>
       <View style={styles.container}>
         <ImageBackground
-          source={{ uri: item?.cover_photo_full_url }}
+          source={coverPhotoUri ? { uri: coverPhotoUri } : require('../../assets/images/food_placeholder.png')}
           style={styles.coverImage}
           imageStyle={styles.coverImageStyle}>
           <View style={styles.favoriteContainer}>
@@ -45,11 +53,15 @@ const NewFiggoStore = ({ item }) => {
 
         <View style={styles.contentContainer}>
           <View style={styles.logoContainer}>
-            <Image
-              source={{ uri: item?.logo_full_url }}
-              style={styles.logo}
-              resizeMode="cover"
-            />
+            {logoUri ? (
+              <Image
+                source={{ uri: logoUri }}
+                style={styles.logo}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.logo} />
+            )}
           </View>
 
           <View style={styles.infoContainer}>

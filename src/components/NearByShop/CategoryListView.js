@@ -74,16 +74,24 @@ const CategoryListView = ({ data }) => {
 
   const formattedDistance = item?.distance ? `${Math.round(item?.distance / 1000) || '100+'} km` : 'N/A';
 
+  // Validate image URI
+  const imageUri = item?.image || item?.images?.[0];
+  const validImageUri = typeof imageUri === 'string' && imageUri.trim() ? imageUri : null;
+
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => navigation.navigate('ProductDetail', { product: item })} style={{ height: 134, width: 280 }} touchOpacity={0.6} >
         <View style={styles.bgColorView} />
         <View style={{ ...StyleSheet.absoluteFillObject, flexDirection: 'row' }}>
           <View style={{ paddingVertical: 24, paddingLeft: 16, }}>
-            <Image
-              style={{ flex: 1, borderRadius: 16, aspectRatio: 1.0, }}
-              source={{ uri: item?.image || item?.images?.[0] }}
-            />
+            {validImageUri ? (
+              <Image
+                style={{ flex: 1, borderRadius: 16, aspectRatio: 1.0, }}
+                source={{ uri: validImageUri }}
+              />
+            ) : (
+              <View style={{ flex: 1, borderRadius: 16, aspectRatio: 1.0, }} />
+            )}
           </View>
           <View style={{ flex: 1, paddingLeft: 16, paddingVertical: 16 }}>
             <Text style={styles.title}>{truncateText(item?.title)}</Text>

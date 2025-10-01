@@ -60,6 +60,10 @@ const Products = ({ item }) => {
   if (!item) {
     return null;
   }
+
+  // Validate image URI
+  const imageUri = item?.image || item?.images?.[0];
+  const validImageUri = typeof imageUri === 'string' && imageUri.trim() ? imageUri : null;
       
   return (
     <View style={styles.container}>
@@ -71,7 +75,7 @@ const Products = ({ item }) => {
           <View style={styles.itemContainer}>
             <View style={styles.imageContainer}>
               <ImageBackground
-                source={{ uri: item?.image || item?.images?.[0] }}
+                source={validImageUri ? { uri: validImageUri } : require('../../assets/images/food_placeholder.png')}
                 style={styles.cardImageBG}
                 resizeMode="cover"
               >
