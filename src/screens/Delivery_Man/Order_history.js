@@ -23,7 +23,7 @@ const OrderHistoryScreen = () => {
   const [orderHistory, setOrderHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('processing'); // New state for active tab
+  const [activeTab, setActiveTab] = useState('delivered'); // Default to delivered tab
   const branding = useAppBranding();
 
   useEffect(() => {
@@ -88,43 +88,44 @@ const OrderHistoryScreen = () => {
 
   // Categorize orders by status
   const categorizeOrders = (ordersList) => {
-    const processing = ordersList.filter(order => 
-      order.status === 'PENDING' || 
-      order.status === 'ACCEPTED' || 
-      order.status === 'ASSIGNED' ||
-      order.status === 'Processing' ||
-      order.status === 'processing'
+    // Filter out ignored orders from all categories
+    const filteredOrders = ordersList.filter(order => 
+      order.status !== 'IGNORED' && 
+      order.status !== 'REJECTED' && 
+      order.status !== 'IGNORED_BY_DELIVERYMAN' &&
+      !order.isIgnored
     );
-    
-    const outForDelivery = ordersList.filter(order => 
-      order.status === 'PICKED' || 
-      order.status === 'out_for_delivery' ||
-      order.status === 'Out for delivery' ||
-      order.status === 'outForDelivery'
-    );
-    
-    const delivered = ordersList.filter(order => 
+
+    const delivered = filteredOrders.filter(order => 
       order.status === 'DELIVERED' || 
       order.status === 'COMPLETED' ||
       order.status === 'Delivered' ||
       order.status === 'delivered'
     );
     
-    return { processing, outForDelivery, delivered };
+    // More comprehensive canceled status matching
+    const canceled = filteredOrders.filter(order => {
+      const status = order.status?.toLowerCase();
+      return status === 'cancelled' || 
+             status === 'canceled' ||
+             status === 'cancelled by user' ||
+             status === 'cancelled by deliveryman' ||
+             status === 'cancelled by admin';
+    });
+    
+    return { delivered, canceled };
   };
 
   // Get orders for current active tab
   const getCurrentTabOrders = () => {
     const categorized = categorizeOrders(orderHistory);
     switch (activeTab) {
-      case 'processing':
-        return categorized.processing;
-      case 'outForDelivery':
-        return categorized.outForDelivery;
       case 'delivered':
         return categorized.delivered;
+      case 'canceled':
+        return categorized.canceled;
       default:
-        return categorized.processing;
+        return categorized.delivered;
     }
   };
 
@@ -132,9 +133,8 @@ const OrderHistoryScreen = () => {
   const getTabCounts = () => {
     const categorized = categorizeOrders(orderHistory);
     return {
-      processing: categorized.processing.length,
-      outForDelivery: categorized.outForDelivery.length,
       delivered: categorized.delivered.length,
+      canceled: categorized.canceled.length,
     };
   };
 
@@ -143,9 +143,8 @@ const OrderHistoryScreen = () => {
     const tabCounts = getTabCounts();
     
     const tabs = [
-      { key: 'processing', label: 'Processing', count: tabCounts.processing, icon: 'hourglass-outline' },
-      { key: 'outForDelivery', label: 'Out for Delivery', count: tabCounts.outForDelivery, icon: 'bicycle-outline' },
       { key: 'delivered', label: 'Delivered', count: tabCounts.delivered, icon: 'checkmark-circle-outline' },
+      { key: 'canceled', label: 'Canceled', count: tabCounts.canceled, icon: 'close-circle-outline' },
     ];
 
     return (
@@ -290,15 +289,13 @@ const OrderHistoryScreen = () => {
           <View style={styles.emptyContainer}>
             <Icon 
               name={
-                activeTab === 'processing' ? 'hourglass-outline' :
-                activeTab === 'outForDelivery' ? 'bicycle-outline' : 'checkmark-circle-outline'
+                activeTab === 'delivered' ? 'checkmark-circle-outline' : 'close-circle-outline'
               } 
               size={48} 
               color={branding.textColor} 
             />
             <Text style={[styles.emptyText, { color: branding.textColor }]}>
-              {activeTab === 'processing' ? 'No processing orders found' :
-               activeTab === 'outForDelivery' ? 'No out for delivery orders found' : 'No delivered orders found'}
+              {activeTab === 'delivered' ? 'No delivered orders found' : 'No canceled orders found'}
             </Text>
           </View>
         ) : (

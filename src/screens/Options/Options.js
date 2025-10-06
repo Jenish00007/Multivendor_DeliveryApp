@@ -205,25 +205,6 @@ export default function SettingsScreen() {
               size={20} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Addresses")}
-            style={[styles.row, { backgroundColor: currentTheme.itemCardColor }]}>
-            <View style={[styles.rowIcon, { backgroundColor: branding.primaryColor }]}>
-              <FeatherIcon color="#fff" name="map-pin" size={20} />
-            </View>
-
-            <View style={styles.detailContainer} > 
-              <Text style={[styles.rowLabel, { color: currentTheme.fontMainColor }]}>Address</Text>
-              <Text style={[styles.rowValue, { color: currentTheme.fontSecondColor }]}>
-                {formetedProfileData?.address || 'Add address'}
-              </Text>
-            </View>
-
-            <FeatherIcon
-              color={currentTheme.fontSecondColor}
-              name="chevron-right"
-              size={20} />
-          </TouchableOpacity>
         </View>
 
         {/* Preferences Section 

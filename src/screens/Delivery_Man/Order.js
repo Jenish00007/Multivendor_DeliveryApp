@@ -36,6 +36,7 @@ const OrderRequestScreen = () => {
   const [locationPermission, setLocationPermission] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [activeTab, setActiveTab] = useState('processing'); // New state for active tab
+  const [ignoredOrderIds, setIgnoredOrderIds] = useState(new Set()); // Track ignored orders locally
   const { token, formetedProfileData, isDeliveryMan, logout } = useUserContext();
   const configuration = useConfiguration();
   const appName = getAppName(configuration.config);
@@ -43,8 +44,38 @@ const OrderRequestScreen = () => {
 
   useEffect(() => {
     checkLocationPermission();
+    loadIgnoredOrders();
     fetchOrders();
   }, [token]);
+
+  const loadIgnoredOrders = async () => {
+    try {
+      const ignoredOrders = await AsyncStorage.getItem('ignoredOrders');
+      if (ignoredOrders) {
+        setIgnoredOrderIds(new Set(JSON.parse(ignoredOrders)));
+      }
+    } catch (error) {
+      console.error('Error loading ignored orders:', error);
+    }
+  };
+
+  const saveIgnoredOrders = async (ignoredSet) => {
+    try {
+      await AsyncStorage.setItem('ignoredOrders', JSON.stringify([...ignoredSet]));
+    } catch (error) {
+      console.error('Error saving ignored orders:', error);
+    }
+  };
+
+  const clearIgnoredOrders = async () => {
+    try {
+      setIgnoredOrderIds(new Set());
+      await AsyncStorage.removeItem('ignoredOrders');
+      console.log('Ignored orders cleared');
+    } catch (error) {
+      console.error('Error clearing ignored orders:', error);
+    }
+  };
 
   const checkLocationPermission = async () => {
     try {
@@ -142,20 +173,74 @@ const OrderRequestScreen = () => {
 
   // Categorize orders by status
   const categorizeOrders = (ordersList) => {
-    const processing = ordersList.filter(order => 
+    console.log('=== ORDER FILTERING DEBUG ===');
+    console.log('Total orders received:', ordersList.length);
+    console.log('Ignored order IDs:', [...ignoredOrderIds]);
+    console.log('Delivery man ID:', deliveryManId);
+    
+    // Filter out ignored orders from all categories using multiple criteria
+    const filteredOrders = ordersList.filter(order => {
+      // Check if order is in our local ignored set
+      if (ignoredOrderIds.has(order._id)) {
+        console.log(`Order ${order._id} filtered: In local ignored set`);
+        return false;
+      }
+      
+      // Check for various ignore statuses
+      const ignoreStatuses = [
+        'IGNORED', 
+        'REJECTED', 
+        'IGNORED_BY_DELIVERYMAN',
+        'IGNORED_BY_DELIVERY_MAN',
+        'DELIVERYMAN_IGNORED',
+        'DELIVERY_MAN_IGNORED',
+        'CANCELLED_BY_DELIVERYMAN',
+        'CANCELLED_BY_DELIVERY_MAN'
+      ];
+      
+      if (ignoreStatuses.includes(order.status)) {
+        console.log(`Order ${order._id} filtered: Status is ${order.status}`);
+        return false;
+      }
+      
+      // Check for ignore flags
+      if (order.isIgnored || order.ignored || order.rejected || order.isRejected) {
+        console.log(`Order ${order._id} filtered: Has ignore flag`, {
+          isIgnored: order.isIgnored,
+          ignored: order.ignored,
+          rejected: order.rejected,
+          isRejected: order.isRejected
+        });
+        return false;
+      }
+      
+      // Check if order has been ignored by this delivery man
+      if (order.ignoredBy === deliveryManId || order.ignored_by === deliveryManId) {
+        console.log(`Order ${order._id} filtered: Ignored by this delivery man`);
+        return false;
+      }
+      
+      console.log(`Order ${order._id} passed filtering: Status=${order.status}`);
+      return true;
+    });
+    
+    console.log('Orders after filtering:', filteredOrders.length);
+    console.log('=== END FILTERING DEBUG ===');
+
+    const processing = filteredOrders.filter(order => 
       order.status === 'PENDING' || 
       order.status === 'ACCEPTED' || 
       order.status === 'ASSIGNED' ||
       order.status === 'Processing'
     );
     
-    const outForDelivery = ordersList.filter(order => 
+    const outForDelivery = filteredOrders.filter(order => 
       order.status === 'PICKED' || 
       order.status === 'out_for_delivery' ||
       order.status === 'Out for delivery'
     );
     
-    const delivered = ordersList.filter(order => 
+    const delivered = filteredOrders.filter(order => 
       order.status === 'DELIVERED' || 
       order.status === 'COMPLETED' ||
       order.status === 'Delivered'
@@ -272,8 +357,15 @@ const OrderRequestScreen = () => {
 
       if (response.data.success) {
         Alert.alert('Success', 'Order ignored successfully');
+        // Add to ignored orders set
+        const newIgnoredSet = new Set([...ignoredOrderIds, orderId]);
+        setIgnoredOrderIds(newIgnoredSet);
+        // Save to AsyncStorage
+        saveIgnoredOrders(newIgnoredSet);
         // Remove the ignored order from the list
         setOrders(prevOrders => prevOrders.filter(order => order._id !== orderId));
+        // Refresh the orders list to get updated data
+        fetchOrders();
       } else {
         throw new Error(response.data.message || 'Failed to ignore order');
       }
@@ -501,9 +593,11 @@ const OrderRequestScreen = () => {
           <Icon name="arrow-back" size={24} color={branding.textColor} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: branding.textColor }]}>Orders</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={fetchOrders}>
-          <Icon name="refresh" size={20} color={branding.textColor} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.refreshButton} onPress={fetchOrders}>
+            <Icon name="refresh" size={20} color={branding.textColor} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tab Navigation */}
@@ -575,6 +669,10 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 34,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   refreshButton: {
     padding: 8,

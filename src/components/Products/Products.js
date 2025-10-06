@@ -70,15 +70,27 @@ const Products = ({ item }) => {
         >
           <View style={styles.itemContainer}>
             <View style={styles.imageContainer}>
-              <ImageBackground
-                source={{ uri: item?.image || item?.images?.[0] }}
-                style={styles.cardImageBG}
-                resizeMode="cover"
-              >
-                <View style={styles.favoritePosition}>
-                  <AddToFavourites product={item}/>
-                </View>
-              </ImageBackground>
+              {(() => {
+                const imageUrl = item?.image || item?.images?.[0];
+                return imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '' ? (
+                  <ImageBackground
+                    source={{ uri: imageUrl }}
+                    style={styles.cardImageBG}
+                    resizeMode="cover"
+                  >
+                    <View style={styles.favoritePosition}>
+                      <AddToFavourites product={item}/>
+                    </View>
+                  </ImageBackground>
+                ) : (
+                  <View style={[styles.cardImageBG, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text>No Image</Text>
+                    <View style={styles.favoritePosition}>
+                      <AddToFavourites product={item}/>
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
             <Text style={styles.cardTitle}>{getShortenedName(item?.name)}</Text>
             <View style={styles.cardFooterRow}>

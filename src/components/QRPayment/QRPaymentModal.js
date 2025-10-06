@@ -10,6 +10,7 @@ import {
   Dimensions,
   Linking,
   Image,
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppBranding } from '../../utils/translationHelper';
@@ -77,9 +78,22 @@ const QRPaymentModal = ({
   };
 
   const handleCashPayment = () => {
+    // Check if order is already in final status
+    const orderStatus = orderDetails?.status;
+    const finalStatuses = ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'];
+    
+    if (finalStatuses.includes(orderStatus)) {
+      Alert.alert(
+        'Cannot Confirm Payment',
+        `This order is already ${orderStatus.toLowerCase()}. Payment cannot be confirmed for completed orders.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
     Alert.alert(
       'Confirm Cash Payment',
-      `Customer paid ₹${qrData?.amount || orderDetails?.totalAmount} in cash?`,
+      `Customer paid ₹${orderDetails?.totalAmount || qrData?.amount} in cash?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -130,7 +144,7 @@ const QRPaymentModal = ({
             Payment Received!
           </Text>
           <Text style={[styles.successAmount, { color: branding.textColor }]}>
-            ₹{qrData?.amount || orderDetails?.totalAmount}
+            ₹{orderDetails?.totalAmount || qrData?.amount}
           </Text>
           <Text style={[styles.successMessage, { color: branding.textColor }]}>
             Order has been marked as paid
@@ -181,7 +195,7 @@ const QRPaymentModal = ({
           
           {/* Payment Amount Highlight */}
           <Text style={[styles.paymentAmount, { color: branding.primaryColor }]}>
-            ₹{qrData?.display_amount || qrData?.amount || orderDetails?.totalAmount || '0.00'}
+            ₹{orderDetails?.totalAmount || qrData?.display_amount || qrData?.amount || '0.00'}
           </Text>
           
           {/* Payment Interface */}
@@ -190,18 +204,16 @@ const QRPaymentModal = ({
               <View style={{ alignItems: 'center', width: '100%' }}>
                 {/* QR Code Image */}
                 {qrData.qr_image_url && (
-                  <View style={[styles.qrCodeWrapper, { backgroundColor: '#FFFFFF' }]}>
-                    <Image
-                      source={{ uri: qrData.qr_image_url }}
-                      style={styles.qrCodeImage}
-                      resizeMode="contain"
-                      onError={(e) => {
-                        console.log('QR Image failed to load:', e.nativeEvent.error);
-                        console.log('QR Image URL:', qrData.qr_image_url);
-                      }}
-                      onLoad={() => console.log('QR Image loaded successfully')}
-                    />
-                  </View>
+                  <Image
+                    source={{ uri: qrData.qr_image_url }}
+                    style={styles.qrCodeImage}
+                    resizeMode="contain"
+                    onError={(e) => {
+                      console.log('QR Image failed to load:', e.nativeEvent.error);
+                      console.log('QR Image URL:', qrData.qr_image_url);
+                    }}
+                    onLoad={() => console.log('QR Image loaded successfully')}
+                  />
                 )}
                 
                 {/* Instructions */}
@@ -209,29 +221,7 @@ const QRPaymentModal = ({
                   Ask customer to scan this QR code with any UPI app to pay
                 </Text>
                 
-                {/* Alternative Payment Button */}
-                <Text style={[styles.orText, { color: branding.textSecondary }]}>
-                  OR
-                </Text>
-                
-                <TouchableOpacity 
-                  style={[styles.paymentLinkButton, { backgroundColor: branding.primaryColor }]}
-                  onPress={handleOpenPaymentUrl}
-                  activeOpacity={0.8}
-                >
-                  <Icon name="open-outline" size={24} color={branding.whiteColorText} />
-                  <Text style={[styles.paymentLinkText, { color: branding.whiteColorText }]}>
-                    Open Payment Page
-                  </Text>
-                  <Icon name="arrow-forward" size={20} color={branding.whiteColorText} />
-                </TouchableOpacity>
-                
-                {/* Payment URL for debugging */}
-                {__DEV__ && qrData?.qr_image_url && (
-                  <Text style={{ fontSize: 10, color: '#999', marginTop: 8, textAlign: 'center' }}>
-                    QR URL: {qrData.qr_image_url}
-                  </Text>
-                )}
+               
               </View>
             ) : (
               <View style={{ 
@@ -257,7 +247,7 @@ const QRPaymentModal = ({
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: branding.textColor }]}>Amount:</Text>
               <Text style={[styles.detailAmount, { color: branding.primaryColor }]}>
-                ₹{qrData?.amount || orderDetails?.totalAmount || '0.00'}
+                ₹{orderDetails?.totalAmount || qrData?.amount || '0.00'}
               </Text>
             </View>
             
@@ -295,6 +285,16 @@ const QRPaymentModal = ({
                 </Text>
               </>
             )}
+            
+            {/* Show message for delivered orders */}
+            {['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'].includes(orderDetails?.status) && (
+              <View style={[styles.deliveredMessage, { backgroundColor: branding.cartDiscountColor + '20' }]}>
+                <Icon name="checkmark-circle" size={20} color={branding.cartDiscountColor} />
+                <Text style={[styles.deliveredMessageText, { color: branding.cartDiscountColor }]}>
+                  Order is already {orderDetails?.status.toLowerCase()}. Payment options are not available.
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Demo Payment Success Button (for testing without backend) */}
@@ -312,18 +312,28 @@ const QRPaymentModal = ({
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.cashButton, { backgroundColor: branding.secondaryBackground }]}
-              onPress={handleCashPayment}
-            >
-              <Icon name="cash-outline" size={20} color={branding.primaryColor} />
-              <Text style={[styles.cashButtonText, { color: branding.primaryColor }]}>
-                Cash Payment
-              </Text>
-            </TouchableOpacity>
+            {/* Only show cash payment button for non-delivered orders */}
+            {!['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'].includes(orderDetails?.status) && (
+              <TouchableOpacity
+                style={[styles.cashButton, { backgroundColor: branding.secondaryBackground }]}
+                onPress={handleCashPayment}
+              >
+                <Icon name="cash-outline" size={20} color={branding.primaryColor} />
+                <Text style={[styles.cashButtonText, { color: branding.primaryColor }]}>
+                  Cash Payment
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
-              style={[styles.cancelButton, { backgroundColor: branding.cartDeleteColor }]}
+              style={[
+                styles.cancelButton, 
+                { 
+                  backgroundColor: branding.cartDeleteColor,
+                  // Make cancel button full width if cash button is hidden
+                  flex: ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'].includes(orderDetails?.status) ? 1 : undefined
+                }
+              ]}
               onPress={onClose}
             >
               <Icon name="close" size={20} color={branding.whiteColorText} />
@@ -353,7 +363,14 @@ const QRPaymentModal = ({
             <Icon name="close" size={24} color={branding.textColor} />
           </TouchableOpacity>
 
-          {renderQRCodeContent()}
+          <ScrollView 
+            style={styles.scrollContainer}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {renderQRCodeContent()}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -368,9 +385,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalView: {
-    margin: 20,
-    borderRadius: 20,
-    padding: 24,
+    margin: 0,
+    borderRadius: 0,
+    padding: 0,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
@@ -380,8 +397,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
-    maxHeight: height * 0.85,
-    width: width * 0.9,
+    maxHeight: height,
+    width: width,
+    flex: 1,
+  },
+  scrollContainer: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollContent: {
+    padding: 24,
+    alignItems: 'center',
+    paddingBottom: 40,
   },
   closeButton: {
     position: 'absolute',
@@ -397,27 +424,17 @@ const styles = StyleSheet.create({
   qrTitle: {
     fontSize: 24,
     fontWeight: '700',
-    marginBottom: 24,
-    marginTop: 16,
+  
+
   },
   paymentContainer: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  qrCodeWrapper: {
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    
   },
   qrCodeImage: {
-    width: 200,
-    height: 200,
+    width: 650,
+    height: 650,
   },
   qrInstructions: {
     fontSize: 14,
@@ -605,9 +622,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   paymentAmount: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '800',
-    marginBottom: 20,
+    marginBottom: 0,
     textAlign: 'center',
   },
   paymentIconContainer: {
@@ -666,6 +683,19 @@ const styles = StyleSheet.create({
   testSuccessText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  deliveredMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  deliveredMessageText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
   },
 });
 

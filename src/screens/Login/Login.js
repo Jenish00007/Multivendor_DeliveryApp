@@ -59,20 +59,31 @@ function Login(props) {
   return (
     <SafeAreaView
       edges={['bottom', 'left', 'right']}
-      style={[styles(currentTheme).safeAreaViewStyles, { backgroundColor: branding.backgroundColor }]}>
+      style={[
+        styles(currentTheme).safeAreaViewStyles,
+        { backgroundColor: branding.backgroundColor }
+      ]}
+    >
       <StatusBar
         backgroundColor={branding.primaryColor}
-        barStyle="dark-content"
+        barStyle='dark-content'
       />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles().flex}>
+        style={styles().flex}
+      >
         <ScrollView
           style={styles().flex}
           contentContainerStyle={{ flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
-          alwaysBounceVertical={false}>
-          <View style={[styles(currentTheme).mainContainer, { backgroundColor: branding.backgroundColor }]}>
+          alwaysBounceVertical={false}
+        >
+          <View
+            style={[
+              styles(currentTheme).mainContainer,
+              { backgroundColor: branding.backgroundColor }
+            ]}
+          >
             <View style={styles().subContainer}>
               <View style={styles().logoContainer}>
                 <Logo style={styles().logo} />
@@ -85,7 +96,8 @@ function Login(props) {
                   style={{
                     ...alignment.MTlarge,
                     ...alignment.MBmedium
-                  }}>
+                  }}
+                >
                   {appName || 'Delivery Partner Login'}
                 </TextDefault>
               </View>
@@ -93,28 +105,31 @@ function Login(props) {
                 <View>
                   <View>
                     <TextInput
-                      placeholder="Enter Email"
+                      placeholder='Enter Email'
                       style={[
                         styles(currentTheme).textField,
-                        { 
+                        {
                           backgroundColor: branding.backgroundColor,
                           color: branding.textColor,
-                          borderColor: inputError ? branding.cartDeleteColor : branding.secondaryBackground
+                          borderColor: inputError
+                            ? branding.cartDeleteColor
+                            : branding.secondaryBackground
                         },
                         inputError ? styles(currentTheme).errorInput : {}
                       ]}
                       placeholderTextColor={branding.textColor}
                       value={input}
                       onChangeText={handleEmailInput}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
+                      keyboardType='email-address'
+                      autoCapitalize='none'
                       autoCorrect={false}
                     />
                     {inputError && (
                       <TextDefault
                         style={styles().error}
                         bold
-                        textColor={branding.cartDeleteColor}>
+                        textColor={branding.cartDeleteColor}
+                      >
                         {inputError}
                       </TextDefault>
                     )}
@@ -127,17 +142,19 @@ function Login(props) {
                       style={[
                         styles(currentTheme).textField,
                         styles().passwordInput,
-                        { 
+                        {
                           backgroundColor: branding.backgroundColor,
                           color: branding.textColor,
-                          borderColor: passwordError ? branding.cartDeleteColor : branding.secondaryBackground
+                          borderColor: passwordError
+                            ? branding.cartDeleteColor
+                            : branding.secondaryBackground
                         },
                         passwordError ? styles(currentTheme).errorInput : {}
                       ]}
                       placeholderTextColor={branding.textColor}
                       value={password}
-                      onChangeText={e => setPassword(e)}
-                      autoCapitalize="none"
+                      onChangeText={(e) => setPassword(e)}
+                      autoCapitalize='none'
                       autoCorrect={false}
                     />
                     <FontAwesome
@@ -157,24 +174,39 @@ function Login(props) {
                       <TextDefault
                         style={styles().error}
                         bold
-                        textColor={branding.cartDeleteColor}>
+                        textColor={branding.cartDeleteColor}
+                      >
                         {passwordError}
                       </TextDefault>
                     </View>
                   )}
                 </View>
-                <View style={[styles.termsContainer, { alignItems: 'center', justifyContent: 'center' }]}>
-                  <TextDefault textColor={branding.textColor} style={{ textAlign: 'center' }}>
+                <View
+                  style={[
+                    styles.termsContainer,
+                    { alignItems: 'center', justifyContent: 'center' }
+                  ]}
+                >
+                  <TextDefault
+                    textColor={branding.textColor}
+                    style={{ textAlign: 'center' }}
+                  >
                     * By logging in, you agree to our{' '}
                     <TextDefault
                       textColor={branding.primaryColor}
-                      onPress={() => {/* Navigate to Terms */ }}>
+                      onPress={() => {
+                        /* Navigate to Terms */
+                      }}
+                    >
                       Terms & Conditions
-                    </TextDefault>
-                    {' '}and{' '}
+                    </TextDefault>{' '}
+                    and{' '}
                     <TextDefault
                       textColor={branding.primaryColor}
-                      onPress={() => {/* Navigate to Privacy Policy */ }}>
+                      onPress={() => {
+                        /* Navigate to Privacy Policy */
+                      }}
+                    >
                       Privacy Policy
                     </TextDefault>
                   </TextDefault>
@@ -184,16 +216,17 @@ function Login(props) {
                   <TouchableOpacity
                     onPress={loginAction}
                     activeOpacity={0.7}
-                    style={[styles(currentTheme).btn, { backgroundColor: branding.primaryColor }]}>
-                    <TextDefault
-                      H4
-                      textColor={branding.whiteColorText}
-                      bold>
+                    style={[
+                      styles(currentTheme).btn,
+                      { backgroundColor: branding.primaryColor }
+                    ]}
+                  >
+                    <TextDefault H4 textColor={branding.whiteColorText} bold>
                       {loading ? (
                         <Spinner
                           backColor='transparent'
                           spinnerColor={branding.whiteColorText}
-                          size="small"
+                          size='small'
                         />
                       ) : (
                         t('loginBtn')
@@ -203,10 +236,16 @@ function Login(props) {
                 </View>
 
                 {/* Or Divider */}
-                <View style={[styles.orContainer, { alignItems: 'center', justifyContent: 'center' }]}>
-                  <TextDefault textColor={branding.textColor} style={{ textAlign: 'center' }}>
-                    
-                  </TextDefault>
+                <View
+                  style={[
+                    styles.orContainer,
+                    { alignItems: 'center', justifyContent: 'center' }
+                  ]}
+                >
+                  <TextDefault
+                    textColor={branding.textColor}
+                    style={{ textAlign: 'center' }}
+                  ></TextDefault>
                 </View>
 
                 {/* Social Login Divider */}
@@ -232,7 +271,6 @@ function Login(props) {
                     </View>
                   </TouchableOpacity>
                 </View> */}
-
               </View>
             </View>
           </View>

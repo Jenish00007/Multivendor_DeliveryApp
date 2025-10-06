@@ -39,7 +39,13 @@ const CarouselSlider = ({ banners }) => {
       >
         {banners?.map((slide) => (
           <View key={slide.id} style={styles.slide}>
-            <Image source={{ uri: slide?.image }} style={styles.image} />
+            {slide?.image && typeof slide.image === 'string' && slide.image.trim() !== '' ? (
+              <Image source={{ uri: slide.image }} style={styles.image} />
+            ) : (
+              <View style={[styles.image, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text>No Image</Text>
+              </View>
+            )}
           </View>
         ))}
       </ScrollView>

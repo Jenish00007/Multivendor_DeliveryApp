@@ -49,11 +49,11 @@ const useQRPayment = () => {
         // Process the response data to ensure proper formatting
         const qrResponseData = response.data.data;
         
-        // Convert amount from paise to rupees for display
+        // Use the amount directly without conversion (assuming backend sends amount in rupees)
         const processedData = {
           ...qrResponseData,
-          amount: qrResponseData.amount ? (qrResponseData.amount / 100) : qrResponseData.order_details?.total_amount,
-          display_amount: qrResponseData.order_details?.total_amount || (qrResponseData.amount / 100)
+          amount: qrResponseData.amount || qrResponseData.order_details?.total_amount,
+          display_amount: qrResponseData.order_details?.total_amount || qrResponseData.amount
         };
         
         console.log('Processed QR Data:', processedData);

@@ -150,7 +150,26 @@ const DeliveryHome = () => {
 
             const data = await response.json();
             if (data.success) {
-                setOrders(data.orders || []);
+                // Debug: Log all orders and their statuses
+                console.log('All orders received:', data.orders?.length || 0);
+                data.orders?.forEach((order, index) => {
+                    console.log(`Order ${index + 1}: ID=${order._id}, Status=${order.status || order.orderStatus}`);
+                });
+                
+                // Filter orders to show only out for delivery orders (same logic as Order.js)
+                const outForDeliveryOrders = (data.orders || []).filter(order => 
+                    order.status === 'PICKED' || 
+                    order.status === 'out_for_delivery' ||
+                    order.status === 'Out for delivery'
+                );
+                const filteredOrders = outForDeliveryOrders;
+                
+                console.log('Filtered orders count:', filteredOrders.length);
+                filteredOrders.forEach((order, index) => {
+                    console.log(`Filtered Order ${index + 1}: ID=${order._id}, Status=${order.status || order.orderStatus}`);
+                });
+                
+                setOrders(filteredOrders);
             } else {
                 throw new Error(data.message || 'Failed to fetch orders');
             }
@@ -397,10 +416,10 @@ const DeliveryHome = () => {
                          {/* Orders Section */}
                          <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: branding.textColor }]}>
-                                Active Orders
+                                Out for Delivery
                             </Text>
                             <Text style={[styles.sectionSubtitle, { color: branding.textColor }]}>
-                                {orders.length} orders available
+                                {orders.length} orders out for delivery
                             </Text>
                         </View>
 
@@ -411,9 +430,9 @@ const DeliveryHome = () => {
                         ) : (
                             <View style={styles.emptyState}>
                                 <MaterialIcon name="delivery-dining" size={64} color={branding.textColor} />
-                                <Text style={[styles.emptyStateTitle, { color: branding.textColor }]}>No Active Orders</Text>
+                                <Text style={[styles.emptyStateTitle, { color: branding.textColor }]}>No Orders Out for Delivery</Text>
                                 <Text style={[styles.emptyStateText, { color: branding.textColor }]}>
-                                    New orders will appear here when available
+                                    Orders will appear here when they are out for delivery
                                 </Text>
                             </View>
                         )}

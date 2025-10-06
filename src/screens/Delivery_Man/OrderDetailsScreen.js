@@ -33,10 +33,10 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [orderDetails, setOrderDetails] = useState(null);
   const [additionalNote, setAdditionalNote] = useState('');
-  const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
-  const [enteredOtp, setEnteredOtp] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
   const [isQRModalVisible, setIsQRModalVisible] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const branding = useAppBranding();
 
   // QR Payment Hook
@@ -55,9 +55,13 @@ const OrderDetailsScreen = ({ route, navigation }) => {
     setTestQRData,
   } = useQRPayment();
 
-  const fetchOrderDetails = async () => {
+  const fetchOrderDetails = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
@@ -101,12 +105,21 @@ const OrderDetailsScreen = ({ route, navigation }) => {
       );
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchOrderDetails();
   }, [orderId]);
+
+  // Refresh order details when payment is successfully completed
+  useEffect(() => {
+    if (isPaymentSucceeded) {
+      console.log('Payment succeeded, refreshing order details...');
+      fetchOrderDetails(true);
+    }
+  }, [isPaymentSucceeded]);
 
   const handleCall = (type, phone) => {
     if (phone) {
@@ -190,6 +203,19 @@ const OrderDetailsScreen = ({ route, navigation }) => {
   };
 
   const handleSwipeConfirmation = () => {
+    // Check if order is already in final status
+    const orderStatus = orderDetails?.status;
+    const finalStatuses = ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'];
+    
+    if (finalStatuses.includes(orderStatus)) {
+      Alert.alert(
+        'Order Already Delivered',
+        `This order is already ${getOrderStatusDisplayText().toLowerCase()}. Delivery confirmation is not available for completed orders.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
     // Check if payment is required and not yet completed
     if (shouldShowQRPayment() && !isPaymentSucceeded) {
       Alert.alert(
@@ -203,17 +229,200 @@ const OrderDetailsScreen = ({ route, navigation }) => {
       return;
     }
     
-    setIsOtpModalVisible(true);
+    // Direct delivery confirmation without OTP
+    confirmDeliveryDirectly();
   };
 
-  // Check if QR payment should be shown (non-COD orders)
+  // Direct delivery confirmation without OTP
+  const confirmDeliveryDirectly = async () => {
+    // Validate orderId
+    if (!orderId) {
+      Alert.alert('Error', 'Order ID is missing');
+      return;
+    }
+
+    // Double-check order status before making API call
+    const orderStatus = orderDetails?.status;
+    const finalStatuses = ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'];
+    
+    if (finalStatuses.includes(orderStatus)) {
+      Alert.alert(
+        'Cannot Confirm Delivery',
+        `This order is already ${getOrderStatusDisplayText().toLowerCase()}. Delivery confirmation is not available for completed orders.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setIsConfirming(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Log the request details for debugging
+      console.log('Confirming delivery directly:', {
+        orderId,
+        apiUrl: `${API_URL}/order/deliveryman/confirm-delivery/${orderId}`,
+        token: token ? 'Token present' : 'No token'
+      });
+
+      // Try the primary endpoint first
+      let response;
+      try {
+        response = await axios.put(
+          `${API_URL}/order/deliveryman/confirm-delivery/${orderId}`,
+          {}, // Empty payload since no OTP is required
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          }
+        );
+      } catch (primaryError) {
+        console.log('Primary endpoint failed, trying alternative:', primaryError.response?.status);
+        
+        // Try alternative endpoint structure if primary fails
+        if (primaryError.response?.status === 404) {
+          try {
+            response = await axios.put(
+              `${API_URL}/deliveryman/confirm-delivery/${orderId}`,
+              {}, // Empty payload since no OTP is required
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                }
+              }
+            );
+          } catch (altError) {
+            console.log('Alternative endpoint also failed:', altError.response?.status);
+            throw primaryError; // Throw the original error
+          }
+        } else {
+          throw primaryError;
+        }
+      }
+
+      if (response.data.success) {
+        Alert.alert('Success', 'Order delivered successfully!');
+        
+        // Refresh order details to get updated status before navigation
+        await fetchOrderDetails(true);
+        
+        // Navigate to order history after a short delay to show updated status
+        setTimeout(() => {
+          navigation.replace('OrderHistoryScreen');
+        }, 1000);
+      } else {
+        throw new Error(response.data.message || 'Failed to confirm delivery');
+      }
+    } catch (error) {
+      console.error('Error confirming delivery:', error);
+      
+      // Get more detailed error information
+      let errorMessage = 'Failed to confirm delivery. Please try again.';
+      
+      if (error.response) {
+        // Server responded with error status
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.data) {
+          if (error.response.data.message) {
+            errorMessage = error.response.data.message;
+          } else if (error.response.data.error) {
+            errorMessage = error.response.data.error;
+          } else if (typeof error.response.data === 'string') {
+            errorMessage = error.response.data;
+          }
+        }
+        
+        // Handle specific HTTP status codes
+        if (error.response.status === 400) {
+          errorMessage = 'Invalid request. Please try again.';
+        } else if (error.response.status === 401) {
+          errorMessage = 'Authentication failed. Please login again.';
+        } else if (error.response.status === 403) {
+          errorMessage = 'You are not authorized to perform this action.';
+        } else if (error.response.status === 404) {
+          errorMessage = 'Order not found.';
+        } else if (error.response.status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        console.error('No response received:', error.request);
+        errorMessage = 'No response from server. Please check your connection.';
+      } else {
+        // Something else happened
+        console.error('Error setting up request:', error.message);
+        errorMessage = error.message || errorMessage;
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  // Check if QR payment should be shown (non-COD orders and valid status)
   const shouldShowQRPayment = () => {
-    // For testing: always show QR payment option
+    // Don't show QR payment for orders that are already delivered or completed
+    const orderStatus = orderDetails?.status;
+    const finalStatuses = ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'];
+    
+    if (finalStatuses.includes(orderStatus)) {
+      return false;
+    }
+    
+    // For testing: show QR payment option for non-final statuses
     // In production, uncomment the lines below to only show for non-COD orders
     return true;
     
     // const paymentMethod = orderDetails?.paymentInfo?.type || orderDetails?.paymentMethod;
     // return paymentMethod && paymentMethod.toLowerCase() !== 'cod' && paymentMethod.toLowerCase() !== 'cash_on_delivery';
+  };
+
+  // Check if delivery confirmation should be shown
+  const shouldShowDeliveryConfirmation = () => {
+    const orderStatus = orderDetails?.status;
+    const finalStatuses = ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'];
+    
+    // Don't show delivery confirmation for already delivered orders
+    return !finalStatuses.includes(orderStatus);
+  };
+
+  // Check if cancel order button should be shown
+  const shouldShowCancelOrder = () => {
+    const orderStatus = orderDetails?.status;
+    const finalStatuses = ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed', 'CANCELLED', 'Cancelled'];
+    
+    // Don't show cancel button for already completed or cancelled orders
+    return !finalStatuses.includes(orderStatus);
+  };
+
+  // Get order status display text
+  const getOrderStatusDisplayText = () => {
+    const orderStatus = orderDetails?.status;
+    const statusMap = {
+      'DELIVERED': 'Delivered',
+      'COMPLETED': 'Completed',
+      'Delivered': 'Delivered',
+      'Completed': 'Completed',
+      'PENDING': 'Pending',
+      'ACCEPTED': 'Accepted',
+      'ASSIGNED': 'Assigned',
+      'PICKED': 'Picked',
+      'out_for_delivery': 'Out for Delivery',
+      'Out for delivery': 'Out for Delivery'
+    };
+    
+    return statusMap[orderStatus] || orderStatus || 'Unknown';
   };
 
   // Show QR Payment Modal
@@ -234,14 +443,35 @@ const OrderDetailsScreen = ({ route, navigation }) => {
     setIsQRModalVisible(false);
     if (!isPaymentSucceeded) {
       resetQRPayment();
+    } else {
+      // If payment was successful, refresh order details
+      console.log('QR modal closed after successful payment, refreshing order details...');
+      fetchOrderDetails(true);
     }
   };
 
   // Handle Cash Payment Confirmation
   const handleConfirmCashPayment = async (notes) => {
+    // Check if order is already in final status
+    const orderStatus = orderDetails?.status;
+    const finalStatuses = ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed'];
+    
+    if (finalStatuses.includes(orderStatus)) {
+      Alert.alert(
+        'Cannot Confirm Payment',
+        `This order is already ${getOrderStatusDisplayText().toLowerCase()}. Payment cannot be confirmed for completed orders.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
     const result = await confirmPaymentManually(orderId, 'cash', notes);
     if (result.success) {
       Alert.alert('Success', 'Cash payment confirmed successfully!');
+      
+      // Refresh order details to get updated status
+      await fetchOrderDetails(true);
+      
       // Auto-close modal after success
       setTimeout(() => {
         setIsQRModalVisible(false);
@@ -259,48 +489,145 @@ const OrderDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  const confirmDeliveryWithOtp = async () => {
-    if (enteredOtp.length !== 6) {
-      Alert.alert('Error', 'Please enter a 6-digit OTP');
+  // Handle Cancel Order
+  const handleCancelOrder = () => {
+    // Check if order can be cancelled
+    const orderStatus = orderDetails?.status;
+    const finalStatuses = ['DELIVERED', 'COMPLETED', 'Delivered', 'Completed', 'CANCELLED', 'Cancelled'];
+    
+    if (finalStatuses.includes(orderStatus)) {
+      Alert.alert(
+        'Cannot Cancel Order',
+        `This order is already ${getOrderStatusDisplayText().toLowerCase()}. Cancellation is not available for completed or cancelled orders.`,
+        [{ text: 'OK' }]
+      );
       return;
     }
 
-    setIsConfirming(true);
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order? This action cannot be undone.',
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes, Cancel', style: 'destructive', onPress: confirmCancelOrder }
+      ]
+    );
+  };
+
+  // Confirm Cancel Order
+  const confirmCancelOrder = async () => {
+    setIsCancelling(true);
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.put(
-        `${API_URL}/order/deliveryman/confirm-delivery/${orderId}`,
-        {
-          otp: enteredOtp,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+      console.log('Cancelling order:', {
+        orderId,
+        apiUrl: `${API_URL}/order/deliveryman/cancel-order/${orderId}`,
+        token: token ? 'Token present' : 'No token'
+      });
+
+      // Try the primary endpoint first
+      let response;
+      try {
+        response = await axios.put(
+          `${API_URL}/order/deliveryman/cancel-order/${orderId}`,
+          {}, // Empty payload
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
           }
+        );
+      } catch (primaryError) {
+        console.log('Primary cancel endpoint failed, trying alternative:', primaryError.response?.status);
+        
+        // Try alternative endpoint structure if primary fails
+        if (primaryError.response?.status === 404) {
+          try {
+            response = await axios.put(
+              `${API_URL}/deliveryman/cancel-order/${orderId}`,
+              {}, // Empty payload
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                }
+              }
+            );
+          } catch (altError) {
+            console.log('Alternative cancel endpoint also failed:', altError.response?.status);
+            throw primaryError; // Throw the original error
+          }
+        } else {
+          throw primaryError;
         }
-      );
+      }
 
       if (response.data.success) {
-        Alert.alert('Success', 'Order delivered successfully!');
-        setIsOtpModalVisible(false);
-        setEnteredOtp('');
-        navigation.replace('OrderHistoryScreen');
+        Alert.alert('Success', 'Order cancelled successfully!');
+        
+        // Refresh order details to get updated status
+        await fetchOrderDetails(true);
+        
+        // Navigate to order history after a short delay
+        setTimeout(() => {
+          navigation.replace('OrderHistoryScreen');
+        }, 1000);
       } else {
-        throw new Error(response.data.message || 'Failed to confirm delivery');
+        throw new Error(response.data.message || 'Failed to cancel order');
       }
     } catch (error) {
-      console.error('Error confirming delivery with OTP:', error);
-      Alert.alert('Error', error.message || 'Failed to confirm delivery. Please try again.');
+      console.error('Error cancelling order:', error);
+      
+      // Get more detailed error information
+      let errorMessage = 'Failed to cancel order. Please try again.';
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.data) {
+          if (error.response.data.message) {
+            errorMessage = error.response.data.message;
+          } else if (error.response.data.error) {
+            errorMessage = error.response.data.error;
+          } else if (typeof error.response.data === 'string') {
+            errorMessage = error.response.data;
+          }
+        }
+        
+        // Handle specific HTTP status codes
+        if (error.response.status === 400) {
+          errorMessage = 'Invalid request. This order cannot be cancelled.';
+        } else if (error.response.status === 401) {
+          errorMessage = 'Authentication failed. Please login again.';
+        } else if (error.response.status === 403) {
+          errorMessage = 'You are not authorized to cancel this order.';
+        } else if (error.response.status === 404) {
+          errorMessage = 'Order not found.';
+        } else if (error.response.status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        errorMessage = 'No response from server. Please check your connection.';
+      } else {
+        console.error('Error setting up request:', error.message);
+        errorMessage = error.message || errorMessage;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
-      setIsConfirming(false);
+      setIsCancelling(false);
     }
   };
+
 
   const getOrderStatus = (status) => {
     const statusConfig = {
@@ -378,10 +705,17 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           <Text style={[styles.errorText, { color: branding.textColor }]}>No order details found</Text>
           <TouchableOpacity 
             style={[styles.retryButton, { backgroundColor: branding.primaryColor }]}
-            onPress={fetchOrderDetails}
+            onPress={() => fetchOrderDetails()}
+            disabled={loading}
           >
-            <Icon name="refresh" size={20} color={branding.whiteColorText} />
-            <Text style={[styles.retryButtonText, { color: branding.whiteColorText }]}>Retry</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color={branding.whiteColorText} />
+            ) : (
+              <>
+                <Icon name="refresh" size={20} color={branding.whiteColorText} />
+                <Text style={[styles.retryButtonText, { color: branding.whiteColorText }]}>Retry</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -413,8 +747,16 @@ const OrderDetailsScreen = ({ route, navigation }) => {
             <Text style={[styles.statusText, { color: branding.whiteColorText }]}>{orderStatus.text}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.refreshButton} onPress={fetchOrderDetails}>
-          <Icon name="refresh" size={20} color={branding.textColor} />
+        <TouchableOpacity 
+          style={styles.refreshButton} 
+          onPress={() => fetchOrderDetails(true)}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? (
+            <ActivityIndicator size="small" color={branding.primaryColor} />
+          ) : (
+            <Icon name="refresh" size={20} color={branding.textColor} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -502,7 +844,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           <View style={styles.detailCard}>
             <View style={styles.detailHeader}>
               <View style={styles.logoContainer}>
-                {orderDetails?.store?.logo ? (
+                {orderDetails?.store?.logo && typeof orderDetails.store.logo === 'string' && orderDetails.store.logo.trim() !== '' ? (
                   <Image 
                     source={{ uri: orderDetails.store.logo }} 
                     style={styles.logoImage}
@@ -695,7 +1037,7 @@ const OrderDetailsScreen = ({ route, navigation }) => {
           {(orderDetails?.items || []).map((item, index) => (
             <View key={item._id || index} style={[styles.itemCard, { backgroundColor: branding.backgroundColor }]}>
               <View style={styles.itemImageContainer}>
-                {item.image ? (
+                {item.image && typeof item.image === 'string' && item.image.trim() !== '' ? (
                   <Image 
                     source={{ uri: item.image }} 
                     style={styles.itemImage}
@@ -746,108 +1088,95 @@ const OrderDetailsScreen = ({ route, navigation }) => {
         </View> */}
 
 
-        {/* QR Payment Button - Show only for non-COD orders */}
-        {shouldShowQRPayment() && (
-          <TouchableOpacity 
-            style={[
-              styles.qrPaymentButton, 
-              { 
-                backgroundColor: isPaymentSucceeded ? branding.cartDiscountColor : branding.primaryColor,
-                opacity: isPaymentSucceeded ? 0.8 : 1 
-              }
-            ]}
-            onPress={handleShowQRPayment}
-            activeOpacity={0.8}
-            disabled={isPaymentSucceeded}
-          >
-            <View style={styles.qrPaymentContent}>
-              {qrLoading ? (
-                <ActivityIndicator size="small" color={branding.whiteColorText} />
-              ) : (
-                <Icon 
-                  name={isPaymentSucceeded ? "checkmark-circle" : "qr-code"} 
-                  size={24} 
-                  color={branding.whiteColorText} 
-                />
-              )}
-              <Text style={[styles.qrPaymentText, { color: branding.whiteColorText }]}>
-                {isPaymentSucceeded ? 'Payment Received' : 'Collect Payment'}
-              </Text>
-              {!qrLoading && !isPaymentSucceeded && (
-                <Icon name="arrow-forward" size={20} color={branding.whiteColorText} />
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
+        {/* Action Buttons Container */}
+        <View style={styles.actionButtonsContainer}>
+          {/* QR Payment Button - Show only for non-COD orders */}
+          {shouldShowQRPayment() && (
+            <TouchableOpacity 
+              style={[
+                styles.qrPaymentButton, 
+                { 
+                  backgroundColor: isPaymentSucceeded ? branding.cartDiscountColor : branding.primaryColor,
+                  opacity: isPaymentSucceeded ? 0.8 : 1,
+                  flex: 1,
+                  marginRight: shouldShowCancelOrder() ? 8 : 0
+                }
+              ]}
+              onPress={handleShowQRPayment}
+              activeOpacity={0.8}
+              disabled={isPaymentSucceeded}
+            >
+              <View style={styles.qrPaymentContent}>
+                {qrLoading ? (
+                  <ActivityIndicator size="small" color={branding.whiteColorText} />
+                ) : (
+                  <Icon 
+                    name={isPaymentSucceeded ? "checkmark-circle" : "qr-code"} 
+                    size={24} 
+                    color={branding.whiteColorText} 
+                  />
+                )}
+                <Text style={[styles.qrPaymentText, { color: branding.whiteColorText }]}>
+                  {isPaymentSucceeded ? 'Payment Received' : 'Collect Payment'}
+                </Text>
+                {!qrLoading && !isPaymentSucceeded && (
+                  <Icon name="arrow-forward" size={20} color={branding.whiteColorText} />
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
 
-        {/* Enhanced Confirmation Button */}
-        <TouchableOpacity 
-          style={[
-            styles.confirmButton, 
-            { 
-              backgroundColor: branding.primaryColor,
-              opacity: (shouldShowQRPayment() && !isPaymentSucceeded) ? 0.6 : 1
-            }
-          ]}
-          onPress={handleSwipeConfirmation}
-          activeOpacity={0.8}
-          disabled={(shouldShowQRPayment() && !isPaymentSucceeded) || isConfirming}
-        >
-          <View style={styles.confirmContent}>
-            {isConfirming ? (
-              <ActivityIndicator size="small" color={branding.whiteColorText} />
-            ) : (
-              <Icon name="checkmark-circle" size={24} color={branding.whiteColorText} />
-            )}
-            <Text style={[styles.confirmText, { color: branding.whiteColorText }]}>Confirm Order Delivery</Text>
-            {!isConfirming && <Icon name="arrow-forward" size={20} color={branding.whiteColorText} />}
+          {/* Cancel Order Button */}
+          {shouldShowCancelOrder() && (
+            <TouchableOpacity 
+              style={[
+                styles.cancelOrderButton, 
+                { 
+                  backgroundColor: branding.cartDeleteColor,
+                  flex: shouldShowQRPayment() ? 1 : undefined,
+                  marginLeft: shouldShowQRPayment() ? 8 : 0
+                }
+              ]}
+              onPress={handleCancelOrder}
+              activeOpacity={0.8}
+              disabled={isCancelling}
+            >
+              <View style={styles.cancelOrderContent}>
+                {isCancelling ? (
+                  <ActivityIndicator size="small" color={branding.whiteColorText} />
+                ) : (
+                  <Icon 
+                    name="close-circle" 
+                    size={24} 
+                    color={branding.whiteColorText} 
+                  />
+                )}
+                <Text style={[styles.cancelOrderText, { color: branding.whiteColorText }]}>
+                  Cancel Order
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+      
+
+        {/* Show delivered status message for completed orders */}
+        {!shouldShowDeliveryConfirmation() && (
+          <View style={[styles.deliveredStatusContainer, { backgroundColor: branding.cartDiscountColor + '20' }]}>
+            <Icon name="checkmark-circle" size={32} color={branding.cartDiscountColor} />
+            <Text style={[styles.deliveredStatusTitle, { color: branding.cartDiscountColor }]}>
+              Order {getOrderStatusDisplayText()}
+            </Text>
+            <Text style={[styles.deliveredStatusMessage, { color: branding.textColor }]}>
+              This order has been successfully {getOrderStatusDisplayText().toLowerCase()} and completed.
+            </Text>
           </View>
-        </TouchableOpacity>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* OTP Input Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isOtpModalVisible}
-        onRequestClose={() => setIsOtpModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
-          <View style={[styles.modalView, { backgroundColor: branding.backgroundColor }]}>
-            <Text style={[styles.modalTitle, { color: branding.textColor }]}>Enter OTP</Text>
-            <TextInput
-              style={[styles.otpInput, { borderColor: branding.secondaryBackground, color: branding.textColor }]}
-              keyboardType="numeric"
-              maxLength={6}
-              value={enteredOtp}
-              onChangeText={setEnteredOtp}
-              placeholder="_ _ _ _ _ _"
-              placeholderTextColor={branding.textColor}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton, { backgroundColor: branding.cartDeleteColor }]}
-                onPress={() => setIsOtpModalVisible(false)}
-              >
-                <Text style={[styles.buttonText, { color: branding.whiteColorText }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmOtpButton, { backgroundColor: branding.primaryColor }]}
-                onPress={confirmDeliveryWithOtp}
-                disabled={isConfirming}
-              >
-                {isConfirming ? (
-                  <ActivityIndicator size="small" color={branding.whiteColorText} />
-                ) : (
-                  <Text style={[styles.buttonText, { color: branding.whiteColorText }]}>Confirm</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* QR Payment Modal */}
       <QRPaymentModal
@@ -1210,10 +1539,23 @@ const styles = StyleSheet.create({
     minHeight: 80,
     lineHeight: 20,
   },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    marginTop: 24,
+    gap: 8,
+  },
   qrPaymentButton: {
     borderRadius: 16,
     paddingVertical: 18,
-    marginTop: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  cancelOrderButton: {
+    borderRadius: 16,
+    paddingVertical: 18,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -1227,6 +1569,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   qrPaymentText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelOrderContent: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  cancelOrderText: {
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1343,6 +1695,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     fontSize: 16,
+  },
+  deliveredStatusContainer: {
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginVertical: 16,
+    gap: 12,
+  },
+  deliveredStatusTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  deliveredStatusMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '500',
+    opacity: 0.8,
   },
 });
 
